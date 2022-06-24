@@ -21,17 +21,17 @@ import java.text.DecimalFormat;
 @NoArgsConstructor(access = AccessLevel.PRIVATE)
 public class CommonUtils {
 
-    private static ObjectMapper OBJECT_MAPPER = null;
+    private static ObjectMapper objectMapper = null;
 
     private static ObjectMapper mapper() {
-        if(OBJECT_MAPPER == null) {
-            OBJECT_MAPPER = new ObjectMapper();
-            OBJECT_MAPPER.configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
-            OBJECT_MAPPER.configure(SerializationFeature.FAIL_ON_EMPTY_BEANS, false);
-            OBJECT_MAPPER.setSerializationInclusion(JsonInclude.Include.NON_NULL);
-            OBJECT_MAPPER.enable(DeserializationFeature.ACCEPT_EMPTY_STRING_AS_NULL_OBJECT);
+        if(objectMapper == null) {
+            objectMapper = new ObjectMapper();
+            objectMapper.configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
+            objectMapper.configure(SerializationFeature.FAIL_ON_EMPTY_BEANS, false);
+            objectMapper.setSerializationInclusion(JsonInclude.Include.NON_NULL);
+            objectMapper.enable(DeserializationFeature.ACCEPT_EMPTY_STRING_AS_NULL_OBJECT);
         }
-        return OBJECT_MAPPER;
+        return objectMapper;
     }
 
     /**
