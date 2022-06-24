@@ -2,7 +2,7 @@
 리팩토링 고군분투기
 
 # 목록
-[1. follow the rules](https://github.com/basquiat78/refactoring-gogunbuntu/tree/follow-the-rule)
+[1. follow the rules](https://github.com/basquiat78/refactoring-gogunbuntu/tree/follow-the-rule)     
 
 # 목적
 최근 어찌어찌 서비스 오픈을 하게 되었다.      
