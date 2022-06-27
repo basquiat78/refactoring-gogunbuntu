@@ -152,7 +152,7 @@ InvestorQualification(limit=10000000000, totalLimit=100000000000000, remain=9999
 
 흠 일단 뭐 원하는 결과가 나오는 거 같다.
 
-거두절미하고 [이펙티브 자바]의 내용대로 클래스 계층구조를 활용해 적용하기에는 좀 무리가 있다.       
+거두절미하고 [이펙티브 자바]의 내용대로 클래스 계층구조를 활용해 적용하기에는 좀 무리가 있다.
 
 어떤 타입에 따라 반환하는 것이 아니고 디비로부터 넘어온 어떤 값 (그 값이 무엇이 되었든)
 
@@ -174,7 +174,7 @@ InvestorQualification(limit=10000000000, totalLimit=100000000000000, remain=9999
 
 enum의 경우도 이와 비슷한 열거 타입이기 때문에 enum의 경우도 소문자로 작성하면 이 메세지를 볼 수 있다.
 
-근데 왜?????          
+근데 왜?????
 
 자바 독을 보면 Enum Types에 대해 설명중 이런 글귀가 있다.
 
@@ -219,11 +219,11 @@ public enum ActiveType {
 }
 ```
 
-하지만 이것을 사용하는 순간 seelct문이나 insert문에서 에러가 발생한다.       
+하지만 이것을 사용하는 순간 seelct문이나 insert문에서 에러가 발생한다.
 
-mySql은 옵션에 따라 테이블명/컬럼의 대소문자 구분을 무시할 수 있거나 엄격하게 구분할 수 있다.       
+mySql은 옵션에 따라 테이블명/컬럼의 대소문자 구분을 무시할 수 있거나 엄격하게 구분할 수 있다.
 
-하지만 컬럼 생성시 만일 enum으로 설정할 경우 enum에 정의 된 값은 대소문자를 구분하기 때문에 이런 제약이 걸려 에러가 발생하는 것이다.          
+하지만 컬럼 생성시 만일 enum으로 설정할 경우 enum에 정의 된 값은 대소문자를 구분하기 때문에 이런 제약이 걸려 에러가 발생하는 것이다.
 
 일단 울며겨자먹기로 소문자로 바꾼다.
 
@@ -344,9 +344,9 @@ public class LowerCaseEnumConverter<T extends Enum<T>> implements AttributeConve
     public T convertToEntityAttribute(String dbData) {
         T[] enums = clazz.getEnumConstants();
         return Arrays.stream(enums)
-                .filter(en -> en.name().equals(dbData.toUpperCase()))
-                .findFirst()
-                .get();
+                     .filter(en -> en.name().equals(dbData.toUpperCase()))
+                     .findFirst()
+                     .get();
     }
 
 }
@@ -366,7 +366,7 @@ public class LowerCaseEnumConverter<T extends Enum<T>> implements AttributeConve
 
 각 enum마다 null이면 기본값으로 반환할 메소드를 같은 이름으로 만들어 놓고 위에 언급한 무식한 방법으로도 가능 할것이다.
 
-instanceof로 비교후 해당되는 enum으로 캐스팅! 하고 메소드 호출하면 끗!        
+instanceof로 비교후 해당되는 enum으로 캐스팅! 하고 메소드 호출하면 끗!
 
 아마두? 사실 무서워서 해보진 않았다.
 
@@ -374,14 +374,14 @@ instanceof로 비교후 해당되는 enum으로 캐스팅! 하고 메소드 호�
 
 ```java
 private static <T extends Enum<T> & Operation> void test(Class<T> opEnumType, double x, double y) {
-        for (Operation op : opEnumType.getEnumConstants())
-        System.out.printf("%f %s %f = %f%n", x, op, y, op.apply(x, y));
-        }
+    for (Operation op : opEnumType.getEnumConstants())
+    System.out.printf("%f %s %f = %f%n", x, op, y, op.apply(x, y));
+}
 ```
 
 이거 처음 봤을 때 "우와 '&'를 통해서 제너릭과 인터페이스를 multiple하게 처리할 수 있다니....."
 
-써본적이 없으니 마냥 신기.        
+써본적이 없으니 마냥 신기.
 
 찾아보니 Bounded Type Parameters라고 한다.
 
