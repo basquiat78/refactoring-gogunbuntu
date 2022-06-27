@@ -128,7 +128,7 @@ class SimpleTest {
      *
      */
     @Test
-    @DisplayName("STEP1: dto에 매핑하기 위해서는 이런 불편함이 있다.")
+    @DisplayName("STEP1: 주니어 개발자의 고민이 보이는 코드.")
     void STEP1() {
         BigDecimal current = BigDecimal.valueOf(10_000);
         InvestorQualification bronze = new InvestorQualification("bronze", current);
