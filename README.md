@@ -12,7 +12,7 @@
 
 이게 5년전 글이네??? 시간 빠르다.
 
-(Java Enum 활용기)(https://techblog.woowahan.com/2527/)
+[Java Enum 활용기](https://techblog.woowahan.com/2527/)
 
 ~~자바 8 이전에는 이 방식을 선배 개발자분들이 좀 힘들게 사용했던 것을 본 기억이 난다. 형 지금은 너무 편해졌어!~~
 
