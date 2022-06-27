@@ -227,6 +227,7 @@ mySql은 옵션에 따라 테이블명/컬럼의 대소문자 구분을 무시�
 
 일단 울며겨자먹기로 소문자로 바꾼다.
 
+
 ```java
 /**
  * active type enum class
