@@ -536,7 +536,7 @@ public abstract class LowerCaseEnumConverter<T extends Enum<T> & EnumNullOperati
     public String convertToDatabaseColumn(T attribute) {
         if(attribute == null) {
             T[] enums = clazz.getEnumConstants();
-            // enum에 정의된 ofNull()을 통해서 해당 default enum정보를 반환한다.
+            // enum에 정의된 defaultIfNull()을 통해서 해당 default enum정보를 반환한다.
             attribute = defaultEnum(enums);
         }
         return attribute.name().toLowerCase();
@@ -552,7 +552,7 @@ public abstract class LowerCaseEnumConverter<T extends Enum<T> & EnumNullOperati
         T[] enums = clazz.getEnumConstants();
         try {
             return Arrays.stream(enums)
-                         // dbData가 null이면 catch로 넘어가서 T의 ofNull을 반환할 것이다.
+                         // dbData가 null이면 catch로 넘어가서 T의 defaultIfNull을 반환할 것이다.
                          .filter(en -> en.name().equals(dbData.toUpperCase()))
                          // orElseThrow가 발생한다면 이건 디비쪽에서 컬럼의 enum이 확장되서 상태값이 늘었을 가능성이 아주 높다.
                          .findFirst().orElseThrow(NoSuchElementException::new);
