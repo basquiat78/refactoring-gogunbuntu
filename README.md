@@ -1,632 +1,860 @@
 # refactoring-gogunbuntu
 리팩토링 고군분투기
 
-# enum을 활용하는 것이 이득이라면 적극적으로 활용해라
+# 그렇게 짠 코드에는 다 이유가 있다.
 
-## 목적
-주니어 개발자의 고민과 고군분투를 코드로 보면서 시니어 개발자 자신이 가지고 있는 지식을 전파해야하는 중요성을 느낀다.
+주니어 개발자분과 코드를 훝어보며 리팩토링을 하던 도중 문득 그 동료분이 이런 질문을 한다.         
 
-일단 이전 브랜치의 마지막이 enum을 적극 활용하라인데 이 브랜치는 이것을 좀더 확장하는 것이 주요 목적이다.
+"제가 이렇게 하면 저렇게 나올것이다라고 생각했는데 하루 이틀을 고민해도 도저히 해결을 못한 코드가 있습니다.
 
-실제로 몇 년전 우아한형제 테크 블로그에서 functional interface를 통해서 enum을 얼마나 우아하게 사용했는지에 대한 블로그가 있다.
+결국에는 이것을 돌리고 돌려서 어떻게 해결하긴 했는데요. 좀 더 좋은 방법이 없을까요??"
 
-이게 5년전 글이네??? 시간 빠르다.
+갑자기 오래전 어느 동료분과 이 문제로 몇일을 고생했던 기억이 확 떠오른다.         
 
-(Java Enum 활용기)(https://techblog.woowahan.com/2527/)
+# 과거로부터 전해내려온 전설적인 이야기
 
-~~자바 8 이전에는 이 방식을 선배 개발자분들이 좀 힘들게 사용했던 것을 본 기억이 난다. 형 지금은 너무 편해졌어!~~
+솔루션을 가장한 SI회사에서 처음 신입시절 비전공개발자였던 나에게 가끔 '이거 왜 이렇게 써야 하나요?'라는 질문에 선배들은 대부분 이렇게 말을 전하였다.
 
-아무튼 초기 지금 스타트업 회사에 들어왔을 때는 이전 시니어 분이 어느정도 틀을 만들어 논 상태였다.
+"과거로부터 저명한 개발자가 이렇게 하라고 하니 의문을 갖지 말고 그냥 써!"
 
-그때 myBatis를 썼는데 문제는 각 엔티티의 정보들이 enum으로 정의해서 사용할 필요성이 있던 코드가 다수 존재 했다.
+그렇다. 과거로부터 내려온 전설적인 코드는 그렇게 의문 없이 사용하게 되었다카더라는 전설이.....
 
-mySql에서는 컬럼 타입을 enum으로 정의할 수 있다. 그래서 create의 경우에는 정의된 코드가 들어오지 않으면 제약 조건에 의해 에러가 발생한다.
+# equals() 그리고 hashCode() 이건 먹는건가요?
 
-jpa를 어느정도 공부했던 이 주니어 개발자는 myBatis에서 enum의 경우에는 매핑이 되지 않는다는 것을 알고 좀 독특하게 처리했는데 myBatis에서는 이것을 해결하기 위해 TypeHandler를 제공하기 때문에 사실 이것을 정의하고 myBatis관련 config.xml에 정의를 하면 끝난다.
+java입문서나 관련 서적을 보면 equals와 hashcode에 대한 중요하게 생각하며 장황한 설명을 보게 된다.        
 
-jpa의 Conveter처럼 xml mapper의 sql에 명시해서 사용할 수 있고 - 예를 들면 암복호화를 처리해야하는 경우 - 위에서처럼 글로벌하게 처리도 가능하다.
+하지만 대부분 이부분은 희안하게 가볍게 건너띄는 경우가 많다. 이론적으로 '아 그렇구나'하고 그냥 넘어가는 경우도 많다.       
 
-어째든 그렇다보니 jpa처럼 사용할 수 없어서 주니어 개발자는 '왜 jpa같은게 없는거야?'라고 욕을 하면서도 나름 멋진 방법으로 이 문제를 해결한거 같다.
+또는 간과하기 쉽다. 위에서처럼 우리는 아무 의심없이 전설적으로 내려오는 그 코드를 삽입하고 사용하기 때문이다.      
 
-근데 그 해결 방식이 어디서 많이 본 것이라 '이걸 어디서 봤더라?' 하고 생각하던 찰나에 조슈아 블로크의 [이펙티브 자바]에서 본 것이다.
+그리고 관습적으로 객체를 비교할 때는 '=='로 그리고 String 변수를 비교할 때는 'a.equals("어떤 값")'처럼 사용하는 것으로 그친다.
 
-책을 읽으면서 경험하지 못한 또는 저렇게 코드를 작성하는게 불편해 보이기 때문에 사실 공감할 수 없었던 내용이지만 실제로 주니어 개발자 입장에서 얼마나 고민했을까 하는 생각이 들었다.
+사실 나의 경우에도 마찬가지였다.
 
-이런 경험을 실제로 하다보니 그제서야 책의 내용이 공감가기 시작하더라.
+조슈아 블로크의 [이펙티브 자바]의 경우에도 한 챕터를 할애할 정도로 많은 이야기를 하지만 마지막 핵심정리는 다음처럼 귀결시킨다.
 
-챕터는 **태그 달린 클래스보다는 클래스 계층구조를 활용하라. page. 142** 참조.
+```
+꼭 필요한 경우가 아니면 equals를 재정의하지 말자. 많은 경우에 Object의 equals가 여러분이 원하는 비교를 정확히 수행해준다. 
+재정의해야 할 때는 그 클래스의 핵심 필드 모두를 빠짐없이, 다섯 가지 규약을 확실히 지켜가며 비교해야 한다.
+```
 
-### 이렇게 한 시나리오
+추가적으로 구글의 autoValue를 홍보한다! 롬복이랑 비슷하면서도 뭔가 다른 그 어떤 라이브러리.
 
-사실 더 복잡하긴 하지만 최대한 단순화해서 예를 들어볼까 한다.
+한번도 써 본적이 없어서 한번 설정해서 실제로 생성된 코드를 살펴보면 롬복과 크게 차이가 나지 않는다.
 
-투자자의 등급에 따라서 해당 투자자가 한 건당 투자할 수 있는 금액 한도와 전체 투자할 수 있는 금액이 결정된다.
+아마도 두개의 라이브러리는 정확하고 안정적인 규약을 통해서 생성하는 모양새다.
 
-enum을 직접 매핑할 수 없으니 String으로 값을 가져와서 InvestorQualification라는 객체에 넣어서 계산을 하고 해당 객체를 들고 다니면서 어떤 비지니스 로직을 수행하고 있었다.
+생성된 코드는 [이펙티브 자바]의 내용과 동일하게 구현되어 있다.
+
+'꼭 필요한 경우가 아니면 equals를 재정의하지 말자.' 이것을 나는 순진하게 그대로 받아드리고 있던게 아니였을까?
+
+하지만 반대로 얘기하면 그럼 '꼭 필요한 경우는 언제인가?'라는 의문이 든다.
+
+물론 나는 순진한(자라 쓰고 실력없는이라고 읽는) 개발자니깐 조슈아 블로크같은 분이 저렇게 말했으니 이런 생각이 전혀 들지 않았다.
+
+그리고 우리는 선배가 '과거로부터 전해내려온' 그 방식을 아무 의심없이 사용하기 시작한다.
+
+그래서 이건 당하기 전까지는 그 전설에 대해서 의문을 갖지 않는다.
+
+# JPA를 쓰면 재정의할 필요가 있던데?
+
+정말인가? 하지만 영속성 컨텍스트와 관련해서 이것을 재정의하지 않아도 프록시를 통해 엔티티를 반환할때 1차 캐쉬에서 이미 있는지 파악하고 잘 작동한다.
+
+그런데 왜 재정의할 필요가 있다는 말을 할까?
+
+솔직히 스프링의 JPA를 쓰다보면 의도적으로 어떤 엔티티를 detach를 통해 준 영속성 상태를 만드는 경우를 못본 거 같다.
+
+~~이론 설명할때 빼놓곤!~~
+
+물론 엔티티를 가져와 어떤 비지니스 로직에 사용하고 dirty checking같은 것을 방지할려는 목적으로 사용할 수는 있겠다는 생각이 퍼득 든다.
+
+하지만 차라리 dto로 반환해서 사용한다면 이것도 실상 쓸일이 거의 없어 보인다. 당연히 경험이 없으니 아는 만큼만 보이는 걸텐데... 시무륵
+
+물론 OSIV의 설정을 true가 아닌 false로 설정했을 경우 서비스 계층이 아닌 view template이나 컨트롤러 계층에서 비교할일이 발생할지는 모르겠지만 이유야 어찌되었든 진짜 '꼭 필요한 경우가 아니면 equals를 재정의하지 말자.'라는 문구가 그대로 실무에서도 이뤄진다.
+
+하지만 주의할 것은 'JPA를 쓰면 재정의할 필요가 있던데?'이리는 말에서 힌트를 얻을 수 있다.
+
+## JPA에서 연관관계시 List Vs Set??
+
+'JPA를 쓰면 재정의할 필요가 있던데?'라는 질문은 @OneToMany나 또는 @Embeddable을 이용한 불변 객체와 엔티티를 @ElementCollection와 @CollectionTable을 이용해 값 타입 콜렉션으로 쓸 경우를 말하는 경우이다.
+
+예를 들면 컬렉션의 경우 List 또는 중복을 허용하지 않기 위한 Set을 사용하는 경우인데 @ElementCollection와 @CollectionTable의 경우에는 사용하지 않는게 좋다.
+
+얘초에 저건 한번 날려보면 N에 해당하는 테이블의 데이터를 무조건 싹 다 지우고 다시 인서트하는 어마무시한 일을 보게 될것이기 때문이다.
+
+이유는 JPA관련 책이나 블로그를 검색해 보면 알게 된다.
+
+그렇다는 것은 @OneToMany의 경우이다.
+
+하지만 이 때는 equals 와 hashcode를 재정의할 때 주의를 요한다.
+
+다음 엔티티를 간단하게 정의해 보자.
+
+
+```java
+@Getter
+@Entity
+@Table(name = "member")
+@ToString(exclude = {"favoriteAddresses"})
+@NoArgsConstructor(access = AccessLevel.PROTECTED)
+public class Member {
+
+  @Builder
+  public Member(String id, String name) {
+    this.id = id;
+    this.name = name;
+  }
+
+  /** 사용자 아이디 */
+  @Id
+  private String id;
+
+  /** 사용자 이름 */
+  private String name;
+
+  @OneToMany(fetch = FetchType.LAZY, cascade = CascadeType.ALL, orphanRemoval = true)
+  @JoinColumn(name = "member_id")
+  private Set<FavoriteAddress> favoriteAddresses = new HashSet<>();
+
+}
+
+@Getter
+@Entity
+@EqualsAndHashCode
+@Table(name = "favorite_address")
+@NoArgsConstructor(access = AccessLevel.PROTECTED)
+public class FavoriteAddress {
+
+  @Id
+  @GeneratedValue(strategy = GenerationType.IDENTITY)
+  private Long id;
+
+  @Builder
+  public FavoriteAddress(String city, String street, String zipcode) {
+    this.city = city;
+    this.street = street;
+    this.zipcode = zipcode;
+  }
+
+  /** 시 */
+  @Column(name = "member_city")
+  private String city;
+
+  /** 동 */
+  @Column(name = "member_street")
+  private String street;
+
+  /** 우편 번호 */
+  @Column(name = "member_zipcode")
+  private String zipcode;
+
+  /** 전체 주소 가져오 */
+  public String totalAddress() {
+    return city + " " + street + ", " + zipcode;
+  }
+
+}
+
+```
+Set으로 중복을 방지한다 해도 equals와 hashcode를 재정의하지 않으면 의미가 없다.
+
+게다가 지금같은 경우에는 설령 FavoriteAddress에 그냥 단순하게 롬복을 통해 equals와 hashcode를 재정의해도 중복으로 데이터가 들어간다.
+
+왜냐하면 지금의 엔티티 구조로 볼때 favorite_address테이블의 primary key에 해당하는 id는 변경되기 때문이다.
+
+그래서 아이디를 제외한 다른 항목들이 설령 전부 같다 해도 Set 입장에서는 다른 객체로 본다.
+
+그래서 롬복을 이용해서 재정의하거나 코드로 직접 재정의할 경우에는 id를 제외해야 한다.       
+
+```java
+@EqualsAndHashCode(exclude = {"id"})
+```
+
+초창기에 이걸로 고생한거 생각하면 눙물이 앞을 가린다.             
+
+~~아니 중복 방지를 한다며????? 근데 왜 중복 데이터가 생기지????????~~
+
+하지만 favorite_address에 만일 배송지에 대한 이름을 정의할 수 있게 된다면 이때는 이것을 다시 고려해 봐야 한다.               
+
+이름까지 제외해서 중복 처리를 할 것이냐 아니면 나머지는 같고 이름이 다르다고 할때 이것을 고객의 의도인지 아닌지 알 방법이 없다.        
+
+그렇다고 중복으로 처리하게 되면 이로 인한 고객의 컴플레인 - 분명 작성을 했는데 저장이 안되는데요? 몇번을 작성하게 하는 건지 같은??? - 이 접수된다면 어떻게 할 것인가?         
+
+따라서 List로 할 것인지 Set으로 할것인지 그리고 Set으로 할경우 equals와 hashcode를 어떻게 재정의 할것인지 판단해야 한다.      
+
+하지만 지금 언급한 내용은 JPA에만 국한된 내용이 아니다.      
+
+단지 이것은 java의 전반적인 내용이다.       
+
+**JPA와 관련 예제 테스트 코드를 남겨둔다.**
+
+
+# 당해보기 전까지는 모른다~~
+
+오래전 어느 날 동료 한 분이 나에게 도움을 요청했다.       
+
+"이 코드좀 봐줘봐! 귀신을 만난 거 같아! 내 코드에 잘못된 부분이 있는건지."       
+
+여러분들은 Map을 사용할 때 어떤 특정 객체를 키값으로 사용해 본적이 있는지 궁금하다.
+
+에를 들면
+
+```java
+public class Test {
+
+
+    public Map<Musician, Genre> createMap() {
+        Map<Musician, Genre> result = new HashMap<>();
+        result.put(new Musician("John Coltrane"), new Genre("Jazz"));
+        result.put(new Musician("ESENSE"), new Genre("Hiphop"));
+        // so something
+        return result;
+    }
+
+
+}
+
+```
+처럼 사용해 본 일이 있는가 이다.
+
+물론 자바 콜렉션 프레임워크의 Map인터페이스를 살펴보면 Map<K, V>처럼 제너릭타입을 받는 것을 볼 수 있다.
+
+하지만 나는 그떄 '오잉? 저런 객체를 키값으로 설정할 수 있다고?'라는 생각이 먼저 들었다.     
+
+그리고 '왜??'라는 의문으로 들어간다. 굳이 힘들게 객체를 키로 설정하는 이유가 무엇인지 도통 알수 없었다.             
+
+그냥 스트링이나 primitive type중 넘버계열의 키만 설정해 사용했던 나로써는 나름 신기했던 것이다.        
+
+하긴 뭐든 가능하긴 하다.       
+
+어째든 궁금해서 Map을 따라가다보면 - Set > HashSet을 따라가도 상관없다. -
+
+```java
+public interface Map<K, V> {
+    
+    // do something
+
+    V get(Object key);
+    
+    // do something
+}
+
+```
+
+이것을 구현한 것들 중 가장 많이 사용되는 HashMap을 따라가면
+
+```java
+public class HashMap<K,V> extends AbstractMap<K,V>
+        implements Map<K,V>, Cloneable, Serializable {
+
+    public V get(Object key) {
+        Node<K,V> e;
+        return (e = getNode(hash(key), key)) == null ? null : e.value;
+    }
+
+    final Node<K,V> getNode(int hash, Object key) {
+        Node<K,V>[] tab; Node<K,V> first, e; int n; K k;
+        if ((tab = table) != null && (n = tab.length) > 0 &&
+                (first = tab[(n - 1) & hash]) != null) {
+            if (first.hash == hash && // always check first node
+                    ((k = first.key) == key || (key != null && key.equals(k))))
+                return first;
+            if ((e = first.next) != null) {
+                if (first instanceof TreeNode)
+                    return ((TreeNode<K,V>)first).getTreeNode(hash, key);
+                do {
+                    if (e.hash == hash &&
+                            ((k = e.key) == key || (key != null && key.equals(k))))
+                        return e;
+                } while ((e = e.next) != null);
+            }
+        }
+        return null;
+    }
+   
+    static final int hash(Object key) {
+        int h;
+        return (key == null) ? 0 : (h = key.hashCode()) ^ (h >>> 16);
+    }
+
+}
+```
+오호라? 실제 내부를 처음 봤을때는 신기방기했다.
+
+결국 value를 가져오기 위해서 Object key의 equals와 hashCode를 사용하는 것을 발견하게 된다.
+
+어느 책을 봐도 equals를 재정의하면 hashcode도 같이 재정의하라는 이야기를 쌍으로 꼭 보게 되는데 거기에는 이런 이유가 있기 때문이다.
+
+[이펙티브 자바]의 내용중 하나를 발췌해 보면
+
+- equals 비교에 사용되는 정보가 변경되지 않았다면, 애플리케이션이 실행되는 동안 그 객체의 hashCode 메서드는 몇 번을 호출해도 일관되게 항상 같은 값을 반환해야 한다.     
+  단, 애플리케이션을 다시 실행한다면 이 값이 달라져도 상관없다.
+- equals(Object)가 두 객체를 같다고 판단했다면, 두 객체의 hashCode는 똑같은 값을 반환해야 한다.
+- equals(Object)가 두 객체를 다르다고 판단했더라도, 두 객체의 hashCode가 서로 다 른 값을 반환할 필요는 없다.     
+  단, 다른 객체에 대해서는 다른 값을 반환해야 해시테이블 의 성능이 좋아진다.
+
+
+***hashCode 재정의를 잘못했을 때 크게 문제가 되는 조항은 두 번째다. 즉, 논리적으로 같은 객체는 같은 해시코드를 반환해야 한다.***
+
+결국 이 이야기는 JPA에서만 국한되는 이야기가 아니다.      
+
+그 동료분은 다음과 같은 시나리오를 토대로 코드를 작성했다. 최대한 당시의 흐릿하지만 기억력을 쥐어짜서 비슷하게 구성해 봤다.        
+
+'일별 카드별로 결제한 정보를 모은다.'         
+
+당시 일별 카드별로 결제한 정보중 어느 특정 카드로 어떤 특정 상품을 구입한 경우에는 포인트로 페이백을 주는 이벤트가 있었기 때문이다.     
+
+이 당시에는 myBatis였는데 jpa든 myBatis를 사용하든 JdbcTemplate를 사용하든 그 어떤 형식이든 상관없다. 데이터베이스로부터 어떤 정보를 가져왔다고 한다면
 
 ```java
 /**
- * 투자자의 등급에 따른 투자자 한도 정보를 담는 객체
- * 테스트를 위해 ToString를 달아놈
+ * 최대한 간결하게 일별로 상품에 대해 어떤 카드를 썼는지 담는 객체
  */
-@ToString(of = {"limit", "totalLimit", "remain"})
-public class InvestorQualification {
+@Getter
+@NoArgsConstructor(access = AccessLevel.PROTECTED)
+public class StatisticsCardPayment {
 
-    /** 투자자 한도 정보를 계산할 때 사용하는 어떤 임의의 값 */
-    private static final BigDecimal SOME_FLAG = BigDecimal.valueOf(100);
+    private String card;
 
-    /**
-     * 자격 enum 정의
-     */
-    private enum Qualification {
-        BRONZE,
-        SILVER,
-        GOLD;
-    }
+    private String itemCode;
 
-    private final Qualification qualification;
+    private String itemName;
 
-    /** 건당 투자한도  금액 */
-    @Getter
-    private BigDecimal limit;
-    /** 전체 투자 금액 */
-    @Getter
-    private BigDecimal totalLimit;
-    /** 투자 가능한 남은 금액 */
-    @Getter
-    private BigDecimal remain;
+    private long price;
 
-    /**
-     * 생성자 등급과 해당 투자자가 지금까지 투자한 금액 정보를 받는다.
-     * @param qualification
-     * @param current
-     */
-    public InvestorQualification(String qualification, BigDecimal current) {
-        this.qualification = Qualification.valueOf(qualification.toUpperCase());
-        this.calculate(current);
-    }
+    private LocalDateTime paymentDate;
 
-    /**
-     * 대충 이런 식으로 계산해서 세팅한다.
-     */
-    private void calculate(BigDecimal current) {
-        switch(qualification) {
-            case BRONZE:
-                this.limit = SOME_FLAG.divide(BigDecimal.TEN).add(BigDecimal.valueOf(10_000));
-                this.totalLimit = SOME_FLAG.divide(BigDecimal.TEN).add(BigDecimal.valueOf(100_000_000));
-                this.remain = this.totalLimit.subtract(current);
-                break;
-            case SILVER:
-                this.limit = SOME_FLAG.divide(BigDecimal.ONE).add(BigDecimal.valueOf(1_000_000));
-                this.totalLimit = SOME_FLAG.divide(BigDecimal.ONE).add(BigDecimal.valueOf(10_000_000_000L));
-                this.remain = this.totalLimit.subtract(current);
-                break;
-            case GOLD:
-                this.limit = SOME_FLAG.multiply(BigDecimal.valueOf(100_000_000));
-                this.totalLimit = SOME_FLAG.multiply(BigDecimal.valueOf(1_000_000_000_000L));
-                this.remain = this.totalLimit.subtract(current);
-                break;
-            default:
-                this.limit = BigDecimal.ZERO;
-                this.totalLimit = BigDecimal.ZERO;
-                this.remain = BigDecimal.ZERO;
-        }
-
+    @Builder
+    public StatisticsCardPayment(@NonNull String card, @NonNull String itemCode, @NonNull String itemName, long price, @NonNull LocalDateTime paymentDate) {
+        this.card = card;
+        this.itemCode = itemCode;
+        this.itemName = itemName;
+        this.price = price;
+        this.paymentDate = paymentDate;
     }
 
 }
 ```
 
-이 코드가 잘 작동하기는 하는건지 일단 확인해 보자.
+귀찮아서 5개만....
+
+```java
+    final String[] cards = {"국민", "신한", "농협"};
+
+    LocalDateTime now = now();
+    
+    List<StatisticsCardPayment> statisticsCardPayments = new ArrayList<>();
+    StatisticsCardPayment statisticsCardPayment1 = StatisticsCardPayment.builder()
+                                                                        .card(cards[0])
+                                                                        .itemCode("ic_0001")
+                                                                        .itemName("상품명[ic_0001]")
+                                                                        .price(100000)
+                                                                        .paymentDate(now.minusDays(1))
+                                                                        .build();
+    statisticsCardPayments.add(statisticsCardPayment1);
+    StatisticsCardPayment statisticsCardPayment2 = StatisticsCardPayment.builder()
+                                                                        .card(cards[1])
+                                                                        .itemCode("ic_0002")
+                                                                        .itemName("상품명[ic_0002]")
+                                                                        .price(120000)
+                                                                        .paymentDate(now.minusDays(1))
+                                                                        .build();
+    statisticsCardPayments.add(statisticsCardPayment2);
+    StatisticsCardPayment statisticsCardPayment3 = StatisticsCardPayment.builder()
+                                                                        .card(cards[0])
+                                                                        .itemCode("ic_0001")
+                                                                        .itemName("특사 상품명[ic_0001]")
+                                                                        .price(80000)
+                                                                        .paymentDate(now.minusDays(3))
+                                                                        .build();
+    statisticsCardPayments.add(statisticsCardPayment3);
+    StatisticsCardPayment statisticsCardPayment4 = StatisticsCardPayment.builder()
+                                                                        .card(cards[2])
+                                                                        .itemCode("ic_0003")
+                                                                        .itemName("상품명[ic_0003]")
+                                                                        .price(120000)
+                                                                        .paymentDate(now.minusDays(4))
+                                                                        .build();
+    statisticsCardPayments.add(statisticsCardPayment4);
+    StatisticsCardPayment statisticsCardPayment5 = StatisticsCardPayment.builder()
+                                                                        .card(cards[2])
+                                                                        .itemCode("ic_0001")
+                                                                        .itemName("상품명[ic_0001]")
+                                                                        .price(100000)
+                                                                        .paymentDate(now.minusDays(4))
+                                                                        .build();
+    statisticsCardPayments.add(statisticsCardPayment5);
+```
+
+그리고 이런 dto하나가 있었다.
+
+작명이 나름 설득력있다. card/item/paymentdate!
+
+```java
+/**
+ * Map의 키값으로 사용하기 위한 dto
+ */
+@Getter
+@NoArgsConstructor(access = AccessLevel.PROTECTED)
+public class CardItemPaymentDto {
+
+    private String card;
+
+    private String itemCode;
+
+    private String paymentDate;
+
+    @Builder
+    public CardItemPaymentDto(@NonNull String card, @NonNull String itemCode, @NonNull String paymentDate) {
+        this.card = card;
+        this.itemCode = itemCode;
+        this.paymentDate = paymentDate;
+    }
+
+}
+
+```
+아이템의 이름과 가격은 상황에 따라 다를 수가 있다. 상품 재고 관리를 하는 방식에 따라 같은 아이템이라도 시기에 따라 상품명에 특가라는 단어가 붙기도 하고 그에 따른 가격 책정이 있기 때문에 키 값으로 딱 맞는건 고유한 정보일 것이다.     
+
+그래서 card와 고유한 상품 코드, 그리고 일별 체크를 위한 부분으로 paymentDate를 갖는 키값으로 사용할 객체를 만든다.
+
+여기까지 내가 생각했던 것은 왜 이것을 키값으로 사용하려 했을까였는데 다음 코드를 보기 시작하면서 깨닫게 된다.
+
+
+```java
+final String[] cards = {"국민", "신한", "농협"};
+
+LocalDateTime now = now();
+
+List<StatisticsCardPayment> statisticsCardPayments = new ArrayList<>();
+StatisticsCardPayment statisticsCardPayment1 = StatisticsCardPayment.builder()
+                                                                    .card(cards[0])
+                                                                    .itemCode("ic_0001")
+                                                                    .itemName("상품명[ic_0001]")
+                                                                    .price(100000)
+                                                                    .paymentDate(now)
+                                                                    .build();
+statisticsCardPayments.add(statisticsCardPayment1);
+StatisticsCardPayment statisticsCardPayment2 = StatisticsCardPayment.builder()
+                                                                    .card(cards[1])
+                                                                    .itemCode("ic_0002")
+                                                                    .itemName("상품명[ic_0002]")
+                                                                    .price(120000)
+                                                                    .paymentDate(now.minusDays(1))
+                                                                    .build();
+statisticsCardPayments.add(statisticsCardPayment2);
+StatisticsCardPayment statisticsCardPayment3 = StatisticsCardPayment.builder()
+                                                                    .card(cards[0])
+                                                                    .itemCode("ic_0001")
+                                                                    .itemName("특사 상품명[ic_0001]")
+                                                                    .price(80000)
+                                                                    .paymentDate(now)
+                                                                    .build();
+statisticsCardPayments.add(statisticsCardPayment3);
+StatisticsCardPayment statisticsCardPayment4 = StatisticsCardPayment.builder()
+                                                                    .card(cards[2])
+                                                                    .itemCode("ic_0003")
+                                                                    .itemName("상품명[ic_0003]")
+                                                                    .price(120000)
+                                                                    .paymentDate(now.minusDays(4))
+                                                                    .build();
+statisticsCardPayments.add(statisticsCardPayment4);
+StatisticsCardPayment statisticsCardPayment5 = StatisticsCardPayment.builder()
+                                                                    .card(cards[2])
+                                                                    .itemCode("ic_0001")
+                                                                    .itemName("상품명[ic_0001]")
+                                                                    .price(100000)
+                                                                    .paymentDate(now.minusDays(4))
+                                                                    .build();
+statisticsCardPayments.add(statisticsCardPayment5);
+
+Map<CardItemPaymentDto, List<StatisticsCardPayment>> result = new HashMap<>();
+
+```
+아마도 예상할 수 있지 않을까?
+
+일단 어떤 card/itemCode/paymentDate로부터 정보를 가져와 키로 사용할 CardItemPaymentDto를 생성하고 해당 StatisticsCardPayment를 리스트 형식으로 가져온다.       
+
+그리고 쭉 돌면서 해당 키로 있는지 없는지 확인하고 없으면 put, 있으면 가져와서 해당 리스트에 추가.      
+
+```java
+final String[] cards = {"국민", "신한", "농협"};
+
+LocalDateTime now = now();
+
+List<StatisticsCardPayment> statisticsCardPayments = new ArrayList<>();
+StatisticsCardPayment statisticsCardPayment1 = StatisticsCardPayment.builder()
+                                                                    .card(cards[0])
+                                                                    .itemCode("ic_0001")
+                                                                    .itemName("상품명[ic_0001]")
+                                                                    .price(100000)
+                                                                    .paymentDate(now)
+                                                                    .build();
+statisticsCardPayments.add(statisticsCardPayment1);
+StatisticsCardPayment statisticsCardPayment2 = StatisticsCardPayment.builder()
+                                                                    .card(cards[1])
+                                                                    .itemCode("ic_0002")
+                                                                    .itemName("상품명[ic_0002]")
+                                                                    .price(120000)
+                                                                    .paymentDate(now.minusDays(1))
+                                                                    .build();
+statisticsCardPayments.add(statisticsCardPayment2);
+StatisticsCardPayment statisticsCardPayment3 = StatisticsCardPayment.builder()
+                                                                    .card(cards[0])
+                                                                    .itemCode("ic_0001")
+                                                                    .itemName("특사 상품명[ic_0001]")
+                                                                    .price(80000)
+                                                                    .paymentDate(now)
+                                                                    .build();
+statisticsCardPayments.add(statisticsCardPayment3);
+StatisticsCardPayment statisticsCardPayment4 = StatisticsCardPayment.builder()
+                                                                    .card(cards[2])
+                                                                    .itemCode("ic_0003")
+                                                                    .itemName("상품명[ic_0003]")
+                                                                    .price(120000)
+                                                                    .paymentDate(now.minusDays(4))
+                                                                    .build();
+statisticsCardPayments.add(statisticsCardPayment4);
+StatisticsCardPayment statisticsCardPayment5 = StatisticsCardPayment.builder()
+                                                                    .card(cards[2])
+                                                                    .itemCode("ic_0001")
+                                                                    .itemName("상품명[ic_0001]")
+                                                                    .price(100000)
+                                                                    .paymentDate(now.minusDays(4))
+                                                                    .build();
+statisticsCardPayments.add(statisticsCardPayment5);
+
+final Map<CardItemPaymentDto, List<StatisticsCardPayment>> resultMap = new HashMap<>();
+        
+statisticsCardPayments.stream()
+                      .forEach(entity -> {
+                            CardItemPaymentDto key = CardItemPaymentDto.builder()
+                                                                       .card(entity.getCard())
+                                                                       .itemCode(entity.getItemCode())
+                                                                       .paymentDate(LocalDateTimeForm.SIMPLE_YMD.transform(entity.getPaymentDate()))
+                                                                       .build();
+                            List<StatisticsCardPayment> values = resultMap.get(key);
+                            if(values == null) {
+                                // 없으면 리스트로 넣자.
+                                resultMap.put(key, new ArrayList<>(Collections.singletonList(entity)));
+                            } else {
+                                // 있으면 기존의 리스트에 추가
+                                values.add(entity);
+                            }
+                      });
+
+System.out.print(resultMap.toString());
+
+```
+의도적으로 국민/ic_0001/now가 같은 녀석이 두개가 존재하기 때문에 이 키에 맞춰 2개의 리스트가 생성되야 한다.
+
+하지만 결과는 전혀 다르게 나온다.
+
+```
+real result:
+{
+    CardItemPaymentDto(card=국민, itemCode=ic_0001, paymentDate=2022-07-03)=[StatisticsCardPayment(card=국민, itemCode=ic_0001, itemName=상품명[ic_0001], price=100000, paymentDate=2022-07-03T19:24:51.820872)], 
+    CardItemPaymentDto(card=국민, itemCode=ic_0001, paymentDate=2022-07-03)=[StatisticsCardPayment(card=국민, itemCode=ic_0001, itemName=특사 상품명[ic_0001], price=80000, paymentDate=2022-07-03T19:24:51.820872)], 
+    CardItemPaymentDto(card=농협, itemCode=ic_0003, paymentDate=2022-06-30)=[StatisticsCardPayment(card=농협, itemCode=ic_0003, itemName=상품명[ic_0003], price=120000, paymentDate=2022-06-30T19:24:51.820872)], 
+    CardItemPaymentDto(card=농협, itemCode=ic_0001, paymentDate=2022-06-30)=[StatisticsCardPayment(card=농협, itemCode=ic_0001, itemName=상품명[ic_0001], price=100000, paymentDate=2022-06-30T19:24:51.820872)], 
+    CardItemPaymentDto(card=신한, itemCode=ic_0002, paymentDate=2022-07-03)=[StatisticsCardPayment(card=신한, itemCode=ic_0002, itemName=상품명[ic_0002], price=120000, paymentDate=2022-07-03T19:24:51.820872)]
+}
+```
+아마도 원래 의도했던 결과는 다음과 같을 것이다.
+
+```
+expected result:
+{
+    CardItemPaymentDto(card=국민, itemCode=ic_0001, paymentDate=2022-07-03)=[
+        StatisticsCardPayment(card=국민, itemCode=ic_0001, itemName=상품명[ic_0001], price=100000, paymentDate=2022-07-03T19:24:51.820872), 
+        StatisticsCardPayment(card=국민, itemCode=ic_0001, itemName=특사 상품명[ic_0001], price=80000, paymentDate=2022-07-03T19:24:51.820872)
+    ], 
+    CardItemPaymentDto(card=농협, itemCode=ic_0003, paymentDate=2022-06-30)=[StatisticsCardPayment(card=농협, itemCode=ic_0003, itemName=상품명[ic_0003], price=120000, paymentDate=2022-06-30T19:24:51.820872)], 
+    CardItemPaymentDto(card=농협, itemCode=ic_0001, paymentDate=2022-06-30)=[StatisticsCardPayment(card=농협, itemCode=ic_0001, itemName=상품명[ic_0001], price=100000, paymentDate=2022-06-30T19:24:51.820872)], 
+    CardItemPaymentDto(card=신한, itemCode=ic_0002, paymentDate=2022-07-03)=[StatisticsCardPayment(card=신한, itemCode=ic_0002, itemName=상품명[ic_0002], price=120000, paymentDate=2022-07-03T19:24:51.820872)]
+}
+```
+[이펙티브 자바]에서는 이것을 다음과 같이 설명한다.
+
+```
+PhoneNumber 클래스는 hashCode 를 재정의하지 않았기 때문에 논리적 동치인 두 객체가 서로 다른 해시코드를 반환하여 두 번째 규약을 지키지 못한다.      
+그 결과 get 메서드는 엉뚱한 해시 버킷에 가서 객체를 찾으려 한 것이다. 
+설사 두 인스턴스를 같은 버킷에 담았더라도 get 메서드는 여전히 null을 반환하는데, HashMap은 해시코드가 다른 엔트리끼리는 동치성 비교를 시도조차 하지 않도록 최적화되어 있기 때문이다.
+```
+
+위에서 우리가 Map을 따라가면서 만난
+
+```java
+public class HashMap<K,V> extends AbstractMap<K,V>
+        implements Map<K,V>, Cloneable, Serializable {
+
+    public V get(Object key) {
+        Node<K,V> e;
+        return (e = getNode(hash(key), key)) == null ? null : e.value;
+    }
+
+    final Node<K,V> getNode(int hash, Object key) {
+        Node<K,V>[] tab; Node<K,V> first, e; int n; K k;
+        if ((tab = table) != null && (n = tab.length) > 0 &&
+                (first = tab[(n - 1) & hash]) != null) {
+            if (first.hash == hash && // always check first node
+                    ((k = first.key) == key || (key != null && key.equals(k))))
+                return first;
+            if ((e = first.next) != null) {
+                if (first instanceof TreeNode)
+                    return ((TreeNode<K,V>)first).getTreeNode(hash, key);
+                do {
+                    if (e.hash == hash &&
+                            ((k = e.key) == key || (key != null && key.equals(k))))
+                        return e;
+                } while ((e = e.next) != null);
+            }
+        }
+        return null;
+    }
+   
+    static final int hash(Object key) {
+        int h;
+        return (key == null) ? 0 : (h = key.hashCode()) ^ (h >>> 16);
+    }
+
+}
+```
+이 코드를 보면 getNode를 타기 전에 hashCode를 먼저 비교하는 hash메소드를 호출하는 것을 볼 수 있다.
+
+결국 ***HashMap은 해시코드가 다른 엔트리끼리는 동치성 비교를 시도조차 하지 않도록 최적화되어 있기 때문이다.*** 여기서 힌트를 얻게된다.
+
+이것을 원하는 결과로 얻기 위해서는 조슈아 블로크 옹께서 홍보하는 autoValue를 이용하거나 롬복의 어노테이션을 이용하면 끝난다.
+
+```java
+/**
+ * Map의 키값으로 사용하기 위한 dto
+ */
+@Getter
+@ToString
+@EqualsAndHashCode
+@NoArgsConstructor(access = AccessLevel.PROTECTED)
+public class CardItemPaymentDto {
+
+    private String card;
+
+    private String itemCode;
+
+    private String paymentDate;
+
+    @Builder
+    public CardItemPaymentDto(@NonNull String card, @NonNull String itemCode, @NonNull String paymentDate) {
+        this.card = card;
+        this.itemCode = itemCode;
+        this.paymentDate = paymentDate;
+    }
+
+}
+
+```
+원하는 결과를 얻었을 것이다.
+
+사실 무언가를 할 때 map 자체를 가지고 비지니스 로직을 처리하는 것이 어려울 때가 있다.
+
+최종적으로는 StatisticsCardPayment에 대한 dto를 만들고 그것을 전체적으로 감싸서 사용할 객체를 만들어 보자.
+
+```java
+/**
+ * StatisticsCardPayment > dto
+ * 이름이 길어서 줄여버림
+ */
+@Getter
+@ToString
+@NoArgsConstructor(access = AccessLevel.PROTECTED)
+public class CardPaymentDto {
+
+    private String card;
+
+    private String itemCode;
+
+    private String itemName;
+
+    private long price;
+
+    private LocalDateTime paymentDate;
+
+    @Builder
+    public CardPaymentDto(@NonNull String card, @NonNull String itemCode, @NonNull String itemName, long price, @NonNull LocalDateTime paymentDate) {
+        this.card = card;
+        this.itemCode = itemCode;
+        this.itemName = itemName;
+        this.price = price;
+        this.paymentDate = paymentDate;
+    }
+
+    public static CardPaymentDto entityToDto(StatisticsCardPayment entity) {
+        return CardPaymentDto.builder()
+                             .card(entity.getCard())
+                             .itemCode(entity.getItemCode())
+                             .itemName(entity.getItemName())
+                             .paymentDate(entity.getPaymentDate())
+                             .build();
+    }
+
+}
+
+/**
+ * 맵의 키와 밸류를 담는 일종의 이름을 막지은 분석 결과 객체 
+ */
+@Getter
+@ToString
+@NoArgsConstructor(access = AccessLevel.PROTECTED)
+public class AnalysisResult {
+
+    private CardItemPaymentDto cardItemPayment;
+
+    private List<CardPaymentDto> cardPayments;
+
+    @Builder
+    public AnalysisResult(@NonNull CardItemPaymentDto cardItemPayment, List<CardPaymentDto> cardPayments) {
+        this.cardItemPayment = cardItemPayment;
+        this.cardPayments = cardPayments;
+    }
+
+    public boolean wantToFind(@NonNull String card, @NonNull String itemCode, @NonNull String paymentDate) {
+        if(card.equals(this.cardItemPayment.getCard()) && itemCode.equals(this.cardItemPayment.getItemCode()) && paymentDate.equals(this.cardItemPayment.getPaymentDate())) {
+            return true;
+        }
+        return false;
+    }
+
+}
+
+```
+
+뭔가 좀 오버 페이스 하는거 같아 보이긴 하지만 이렇게도 할 수 있다는 것을 한번 보여주고 싶었다.
+
 
 ```java
 class SimpleTest {
 
-    /**
-     * 맨 처음 작성되었던 InvestorQualification를 한번 확인차 확인해 본다.
-     * 뭐 잘 돌아갔으니 문제가 없었을 코드일 것이다.
-     *
-     */
-    @Test
-    @DisplayName("STEP1: dto에 매핑하기 위해서는 이런 불편함이 있다.")
-    void STEP1() {
-        BigDecimal current = BigDecimal.valueOf(10_000);
-        InvestorQualification bronze = new InvestorQualification("bronze", current);
-        System.out.println(bronze.toString());
-        InvestorQualification silver = new InvestorQualification("silver", current);
-        System.out.println(silver.toString());
-        InvestorQualification gold = new InvestorQualification("gold", current);
-        System.out.println(gold.toString());
-    }
+  @Test
+  @DisplayName("JUST_DO_CODING: 데이터 생성하고 테스트 해보기")
+  void JUST_DO_CODING() {
+
+    final String[] cards = {"국민", "신한", "농협"};
+
+    LocalDateTime now = now();
+
+    List<StatisticsCardPayment> statisticsCardPayments = new ArrayList<>();
+    StatisticsCardPayment statisticsCardPayment1 = StatisticsCardPayment.builder()
+                                                                        .card(cards[0])
+                                                                        .itemCode("ic_0001")
+                                                                        .itemName("상품명[ic_0001]")
+                                                                        .price(100000)
+                                                                        .paymentDate(now)
+                                                                        .build();
+    statisticsCardPayments.add(statisticsCardPayment1);
+    
+    StatisticsCardPayment statisticsCardPayment2 = StatisticsCardPayment.builder()
+                                                                        .card(cards[1])
+                                                                        .itemCode("ic_0002")
+                                                                        .itemName("상품명[ic_0002]")
+                                                                        .price(120000)
+                                                                        .paymentDate(now.minusDays(1))
+                                                                        .build();
+    statisticsCardPayments.add(statisticsCardPayment2);
+    
+    StatisticsCardPayment statisticsCardPayment3 = StatisticsCardPayment.builder()
+                                                                        .card(cards[0])
+                                                                        .itemCode("ic_0001")
+                                                                        .itemName("특사 상품명[ic_0001]")
+                                                                        .price(80000)
+                                                                        .paymentDate(now)
+                                                                        .build();
+    statisticsCardPayments.add(statisticsCardPayment3);
+    
+    StatisticsCardPayment statisticsCardPayment4 = StatisticsCardPayment.builder()
+                                                                        .card(cards[2])
+                                                                        .itemCode("ic_0003")
+                                                                        .itemName("상품명[ic_0003]")
+                                                                        .price(120000)
+                                                                        .paymentDate(now.minusDays(4))
+                                                                        .build();
+    statisticsCardPayments.add(statisticsCardPayment4);
+    
+    StatisticsCardPayment statisticsCardPayment5 = StatisticsCardPayment.builder()
+                                                                        .card(cards[2])
+                                                                        .itemCode("ic_0001")
+                                                                        .itemName("상품명[ic_0001]")
+                                                                        .price(100000)
+                                                                        .paymentDate(now.minusDays(4))
+                                                                        .build();
+    statisticsCardPayments.add(statisticsCardPayment5);
+
+    final Map<CardItemPaymentDto, List<StatisticsCardPayment>> resultMap = new HashMap<>();
+
+    statisticsCardPayments.stream()
+                          .forEach(entity -> {
+                              CardItemPaymentDto key = CardItemPaymentDto.builder()
+                                                                         .card(entity.getCard())
+                                                                         .itemCode(entity.getItemCode())
+                                                                         .paymentDate(LocalDateTimeForm.SIMPLE_YMD.transform(entity.getPaymentDate()))
+                                                                         .build();
+                              List<StatisticsCardPayment> values = resultMap.get(key);
+                              if(values == null) {
+                                // 없으면 리스트로 넣자.
+                                resultMap.put(key, new ArrayList<>(Collections.singletonList(entity)));
+                              } else {
+                                // 있으면 기존의 리스트에 추가
+                                values.add(entity);
+                              }
+                          });
+
+    System.out.print(resultMap.toString());
+
+    List<AnalysisResult> results = resultMap.entrySet()
+                                            .stream()
+                                            .map(entry -> AnalysisResult.builder()
+                                                                        .cardItemPayment(entry.getKey())
+                                                                        .cardPayments(entry.getValue()
+                                                                                           .stream()
+                                                                                           .map(CardPaymentDto::entityToDto)
+                                                                                           .collect(toList()))
+                                                                        .build())
+                                            .collect(toList());
+    System.out.println(results.toString());
+
+    // 특정 조건으로 조회하기
+    String targetCard = cards[0];
+    String targetItemCode = "ic_0001";
+    Predicate<AnalysisResult> wantToFind = analysisResult -> analysisResult.wantToFind(targetCard, targetItemCode, LocalDateTimeForm.SIMPLE_YMD.transform(now));
+
+    AnalysisResult analysisResult = results.stream()
+                                           .filter(wantToFind::test)
+                                           .findFirst()
+                                           .orElseGet(null); // 없으면 null 반환
+
+    System.out.println(analysisResult.toString());
+    System.out.println(analysisResult.getCardPayments().toString());
+
+    // 스트림에서 바로 원하는 조건의 cardPayments list를 가져오자.
+    List<CardPaymentDto> cardPayments = results.stream()
+                                               .filter(wantToFind::test)
+                                               // 그냥 한줄로 처리
+                                               //.map(AnalysisResult::getCardPayments)
+                                               //.flatMap(cardPaymentDtos -> cardPaymentDtos.stream())
+                                               .flatMap(dto -> dto.getCardPayments().stream())
+                                               .collect(toList());
+
+    System.out.println(cardPayments.toString());
+  }
 
 }
 ```
+솔직히 이 때 나도 귀신을 만난 것 같은 버그때문에 그 동료분과 진짜 오랫동안 디버깅을 하며 찾아봤다.       
 
-결과는?
+하지만 그 날 결국 왜 이런 현상이 발생하는지에 대해서 전혀 감을 잡지 못했다가 몇일 지나서야 다른 분의 도움으로 알게 된 케이스이다.             
 
-```
-InvestorQualification(limit=10010, totalLimit=100000010, remain=99990010)
-InvestorQualification(limit=1000100, totalLimit=10000000100, remain=9999990100)
-InvestorQualification(limit=10000000000, totalLimit=100000000000000, remain=99999999990000)
-```
+그 몇일 동안 이 생각때문에 머리가 얼마나 복잡했는지 모른다. 당연히 되야 한다고 생각했던게 안되니깐 답답함이 장난아니였다.            
 
-흠 일단 뭐 원하는 결과가 나오는 거 같다.
+이런 걸 당해 본 적이 있었어야지.....
 
-거두절미하고 [이펙티브 자바]의 내용대로 클래스 계층구조를 활용해 적용하기에는 좀 무리가 있다.
+이 때까지 전설로만 내려오던 또는 통념적으로만 의례 '그렇구나'라고 짚고 넘어갔던 이 equals와 hashcode에 대해서 다시 한번 생각해 본 경우다.                
 
-어떤 타입에 따라 반환하는 것이 아니고 디비로부터 넘어온 어떤 값 (그 값이 무엇이 되었든)
-
-결국 그 정보는 InvestorQualification 으로 귀결되는 코드이다.
-
-차라리 이럴거면..... 그냥 UtilClass로 정의하는 것이 좋았을 거 같은데?
-
-하지만 이렇게 객체를 만들어 놓고 여기저기서 사용하고 있었던 터라 나름 이유있는 방식이다.
-
-그리고 사실.... 뭐 리팩터링 해도 그렇게 크게 이득될 거 같진 않았지만 myBatis에서도 이것을 jpa처럼 사용할 수 있다는 것과 더불어 mySQL에 enum으로 정의할 때 소문자로 정의하면서 별어지는 몇 몇 갭을 좀 해결하고자 리팩토링한 케이스이다.
-
-최종적으로는 우아한형제의 테크 블로그의 enum활용처럼 functional interface와 람다를 활용해 enum 클래스로 녹여서 해결하게 되었다.
-
-### 진행하기전 번외편: 과거부터 전설처럼 내려온 관습적인 규약을 지켜야 할까? 이것도 code smell이라 할수 있을지?
-
-통상적으로 static final처럼 상수로 사용하거나 할때 여러분들은 변수 명을 대문자로 설정한다.
-
-뭐 대소문자로 작성해도 상관없지만 sonar lint같은 lint툴을 사용하면 고치라고 한다.
-
-enum의 경우도 이와 비슷한 열거 타입이기 때문에 enum의 경우도 소문자로 작성하면 이 메세지를 볼 수 있다.
-
-근데 왜?????
-
-자바 독을 보면 Enum Types에 대해 설명중 이런 글귀가 있다.
-
-'Because they are constants, the names of an enum type's fields are in uppercase letters.'
-
-어찌보면 이런 규약을 통해 "당신이 지금 바라보고 있는 '그' 변수는 상수다"라고 가시적으로 표현하는 것이 아닌가 생각이 든다.
-
-의문을 가지지 말자. 저렇게 쓴 데에는 다 이유가 있다.
-
-물론 자신이 아웃라이어라면? 소문자로 써도 무방하지 않을까?
-
-지금까지 이게 문제가 되었던 적은 없었응께....
-
-# 이것은 나의 고군분투기
-
-내가 신규모듈로 만들었던 어플리케이션들은 현재 jpa로 구성되어 있다.
-
-나는 enum도 클래스다라고 얘기를 해왔는데 결국 이것은 인터페이스를 구현할 수 있다는 것이다.
-
-사실 지금까지 인터페이스를 구현한 enum을 사용할 일이 없었는데 위에 언급했던 mySql의 상태 정보를 enum으로 설정했는데 그 값들이 소문자였다는 것이다.
-
-예를 들면 member테이블의 active라는 컬럼은 enum('active', 'inactive', 'blacklist', 'delete')처럼 정의를 해놨다.
-
-처음에는 관습적으로 다음과 같이 enum 클래스를 작성한다.
-
-
-```java
-/**
- * active type enum class
- */
-@AllArgsConstructor(access = AccessLevel.PROTECTED)
-public enum ActiveType {
-
-    ACTIVE("활성"),
-    INACTIVE("비활성"),
-    BLACKLIST("블랙컨슈머"),
-    DELETE("탈퇴");
-
-    @Getter
-    private String description;
-
-}
-```
-
-하지만 이것을 사용하는 순간 seelct문이나 insert문에서 에러가 발생한다.
-
-mySql은 옵션에 따라 테이블명/컬럼의 대소문자 구분을 무시할 수 있거나 엄격하게 구분할 수 있다.
-
-하지만 컬럼 생성시 만일 enum으로 설정할 경우 enum에 정의 된 값은 대소문자를 구분하기 때문에 이런 제약이 걸려 에러가 발생하는 것이다.
-
-일단 울며겨자먹기로 소문자로 바꾼다.
-
-
-```java
-/**
- * active type enum class
- */
-@AllArgsConstructor(access = AccessLevel.PROTECTED)
-public enum ActiveType {
-
-    active("활성"),
-    inactive("비활성"),
-    blacklist("블랙컨슈머"),
-    delete("탈퇴");
-
-    @Getter
-    private String description;
-
-}
-```
-솔직히 문제없이 잘 돌아간다. 다만 lint툴을 사용한다면 보게 된 메세지는 눈감고 넘어가야 한다.
-
-하지만 나의 경우에는 그러고 싶지 않았다. 그래서 DBA분과 이 이야기를 했는데 이제는 어쩔 수 없다고 한다.
-
-DBA의 눈빛에서 감지할 수 있었던 것은 '왜 바꿔야 하지? 바꿔서 어떤 이득을 얻을 수 있는지 내게 설명해줘.'다.
-
-개발자 기준에서 이것을 위와 같이 대문자로 해야하는 이유로 설득할 자신이 없었다.
-
-~~물론 그분도 설득당하지 않을 자신이 있어 보였다. 의문의 패배~~
-
-게다가 디폴트 값이 없어 null로 세팅되어 있다. 실제로 null인 경우에는 기본값을 active로 하라는 말만 들었다.
-
-물론 코드 레벨에서 디폴트 값을 세팅해서 해주면 되지만 다른 어플리케이션에서 이 테이블의 정보를 생성할 때 null로 들어간 데이터가 너무 많았다.
-
-고민하다가 결국에는 이것을 처리해줄 컨버터를 만들기로 했다.
-
-처음에는 단순하게 생각해서 다음과 같이 컨버터를 하나 만들었다.
-
-```java
-/**
- * upper/lower case를 적용한다.
- */
-@Converter
-public class ActiveTypeLowerCaseConverter implements AttributeConverter<ActiveType, String> {
-
-    /**
-     * enum -> db
-     * @param attribute
-     * @return String
-     */
-    @Override
-    public String convertToDatabaseColumn(ActiveType attribute) {
-        // null이면 default 세팅해준다.
-        if(attribute == null) {
-            return ActiveType.ACTIVE.name().toLowerCase();
-        }
-        return attribute.name().toLowerCase();
-    }
-
-    /**
-     * db -> enum
-     * @param dbData
-     * @return
-     */
-    @Override
-    public ActiveType convertToEntityAttribute(String dbData) {
-        if(isEmpty(dbData)) {
-            return ActiveType.ACTIVE;
-        }
-        return ActiveType.valueOf(dbData.toUpperCase());
-    }
-
-}
-```
-속으로
-
-'음 깔끔해! null인 경우도 다 처리했어'
-
-하지만 생각해 보니 이게 한두개가 아니네??? 같은 코드로 생성될 컨버터의.. 아! 물론 어림도 없다.
-
-결국 제네릭하게 처리하는 방식으로 진행해야 한다.
-
-그렇다면 무엇이 필요할까?
-
-해답은 역시 조슈아 블로크의 [이펙티브 자바]에서도 찾을 수 있다.
-
-챕터는 **확장할 수 있는 열거 타입이 필요하면 인터페이스를 사용하라. page. 232** 참조
-
-처음에는 이런 생각을 했다.
-
-'일단은 대문자를 소문자로 처리하기 위함이니 LowerCaseEnumConverter를 하나 만들기로 한다.
-
-
-```java
-@Converter
-@RequiredArgsConstructor
-public class LowerCaseEnumConverter<T extends Enum<T>> implements AttributeConverter<T, String> {
-
-    private final Class<T> clazz;
-
-    /**
-     * enum 상수 값을 가져와서 lowerCase로 반환한다.
-     * @param attribute
-     * @return String
-     */
-    @Override
-    public String convertToDatabaseColumn(T attribute) {
-        return attribute.name().toLowerCase();
-    }
-
-    /**
-     * 디비 정보는 lowerCase로 upperCase로 변환후 비교후 해당 enum객체를 반환하게 한다.
-     * @param dbData
-     * @return T
-     */
-    @Override
-    public T convertToEntityAttribute(String dbData) {
-        T[] enums = clazz.getEnumConstants();
-        return Arrays.stream(enums)
-                     .filter(en -> en.name().equals(dbData.toUpperCase()))
-                     .findFirst()
-                     .get();
-    }
-
-}
-
-```
-근데 이렇게 만들고 보니 문제가 하나 있다. null처리를 못한다는 것이다.
-
-제너릭하게 처리할 수 있는 기반을 마련했지만 null인 경우 default값을 세팅할 수가 없었다.
-
-그렇다고 일일이 instanceof로 비교해가며 해당 enum을 찾아서 처리한다?
-
-~~아 물론 그렇게 할까? 라고 잠시 고민을 했다.~~
-
-하지만 이것은 좀 뻘짓이다.
-
-가능이야 하겠지.
-
-각 enum마다 null이면 기본값으로 반환할 메소드를 같은 이름으로 만들어 놓고 위에 언급한 무식한 방법으로도 가능 할것이다.
-
-instanceof로 비교후 해당되는 enum으로 캐스팅! 하고 메소드 호출하면 끗!
-
-아마두? 사실 무서워서 해보진 않았다.
-
-[이펙티브 자바]에서 위에 언급했던 챕터를 보면 처음보는 신기한 표현을 보게 된다.
-
-```java
-private static <T extends Enum<T> & Operation> void test(Class<T> opEnumType, double x, double y) {
-    for (Operation op : opEnumType.getEnumConstants())
-    System.out.printf("%f %s %f = %f%n", x, op, y, op.apply(x, y));
-}
-```
-
-이거 처음 봤을 때 "우와 '&'를 통해서 제너릭과 인터페이스를 multiple하게 처리할 수 있다니....."
-
-써본적이 없으니 마냥 신기.
-
-찾아보니 Bounded Type Parameters라고 한다.
-
-[Generics Lesson](https://web.archive.org/web/20081217034134/http://java.sun.com/docs/books/tutorial/java/generics/index.html)
-
-이와 관련 [이펙티브 자바]에서 관련 설명이 존재한다. 사실 말이 좀 어렵긴 하지만 어떻게 작동하는지 알게 되었다.
-
-제네릭이 이렇게 멋지구나. 아 물론 어렵기도 하다.
-
-자. 이제는 interface를 하나 만들어 볼 생각이다.
-
-Null을 체크하기 위한 인터페이스를 하나 만들어 본다.
-
-```java
-/**
- * 만일 attribute가 null인 경우
- * 이것을 구현한 enum class에서 default값을 반환하게 만든다. 
- */
-public interface EnumNullOperation<T> {
-    T defaultIfNull();
-}
-
-/**
- * active type enum class
- */
-@AllArgsConstructor(access = AccessLevel.PROTECTED)
-public enum ActiveType implements EnumNullOperation<ActiveType> {
-
-    ACTIVE("활성"),
-    INACTIVE("비활성"),
-    BLACKLIST("블랙컨슈머"),
-    DELETE("탈퇴");
-
-    @Getter
-    private String description;
-
-    /**
-     * null이라면 활성 상태의 enum을 반환한다.
-     * @return ActiveType
-     */
-    @Override
-    public ActiveType defaultIfNull() {
-        return ActiveType.ACTIVE;
-    }
-
-}
-
-```
-그렇다면 ActiveType은 위와 같이 변경될 것이다.
-
-이렇게 한다면 각 enum마다 db에서 null이거나 엔티티에 세팅을 하지 않았을 경우 기본 값을 세팅하게 된다.
-
-자 그럼 이걸 언제 쓰겠다는 것인가?
-
-```java
-@Converter
-@RequiredArgsConstructor
-public class LowerCaseEnumConverter<T extends Enum<T> & EnumNullOperation<T>> implements AttributeConverter<T, String> {
-
-    private final Class<T> clazz;
-
-    /**
-     * enum 상수 값을 가져와서 lowerCase로 반환한다.
-     * @param attribute
-     * @return String
-     */
-    @Override
-    public String convertToDatabaseColumn(T attribute) {
-        if(attribute == null) {
-            T[] enums = clazz.getEnumConstants();
-            // EnumNullOperation을 구현한 enum에 정의된 defaultIfNull()을 통해서 해당 default enum정보를 반환한다.
-            attribute = defaultEnum(enums);
-        }
-        return attribute.name().toLowerCase();
-    }
-
-    /**
-     * 디비 정보는 lowerCase로 upperCase로 변환후 비교후 해당 enum객체를 반환하게 한다.
-     * @param dbData
-     * @return T
-     */
-    @Override
-    public T convertToEntityAttribute(String dbData) {
-        T[] enums = clazz.getEnumConstants();
-        try {
-            return Arrays.stream(enums)
-                         // dbData가 null이면 catch로 넘어가서 T의 defaultIfNull을 반환할 것이다.
-                         .filter(en -> en.name().equals(dbData.toUpperCase()))
-                         // orElseThrow가 발생한다면 이건 디비쪽에 컬럼의 enum이 확장되었을 가능성이 있다.
-                         .findFirst().orElseThrow(NoSuchElementException::new);
-        } catch(NullPointerException e) {
-            return defaultEnum(enums);
-        }
-    }
-
-    /**
-     * 반복되는 공통 코드 줄이자
-     * @param enums
-     * @return T
-     */
-    private T defaultEnum(T[] enums) {
-        return Arrays.stream(enums)
-                     .filter(en -> en == en.defaultIfNull())
-                     .findFirst().orElseThrow(NoSuchElementException::new);
-    }
-
-}
-
-```
-
-하지만 이것을 그대로 사용할려고 엔티티에 다음과 같이
-
-```java
-public class Member {
-
-    // do some columns
-
-    /** 고객의 상태 */
-    @Convert(converter = LowCaseEnumConverter<ActivityType>.class)
-    private ActivityType status;
-
-}
-```
-
-가능할까? 아마도 'Cannot select from parameterized type'라고 ide에서 오류를 보여줄 것이다.
-
-결국에는 자바의 특징을 최대한 활용해서 해당 Enum에 그 enum에 맞게 convert를 선언해서 가져와 사용하는 방식으로 변경하자.
-
-그렇다면 기존의 LowerCaseEnumConverter는 추상 클래스로 만들자.
-
-인터페이스가 default 메소드를 통해 구현된 메소드를 가지게 되면서 추상 클래스와 인터페이스의 차이가 자바 8이후 살짝 미묘해진 경향이 있지만 추상 클래스는 내부에 변수, 생성자, private 메소드를 가질 수 있다.
-
-애초에 그냥 클래스였던 녀석이기 때문에 추상 클래스로 만들자.
-
-```java
-/**
- * lower case처리를 위한 추상 클래스
- * created by basquiat
- */
-@Converter
-@RequiredArgsConstructor
-public abstract class LowerCaseEnumConverter<T extends Enum<T> & EnumNullOperation<T>> implements AttributeConverter<T, String> {
-
-    private final Class<T> clazz;
-
-    /**
-     * enum 상수 값을 가져와서 lowerCase로 반환한다.
-     * @param attribute
-     * @return String
-     */
-    @Override
-    public String convertToDatabaseColumn(T attribute) {
-        if(attribute == null) {
-            T[] enums = clazz.getEnumConstants();
-            // enum에 정의된 ofNull()을 통해서 해당 default enum정보를 반환한다.
-            attribute = defaultEnum(enums);
-        }
-        return attribute.name().toLowerCase();
-    }
-
-    /**
-     * 디비 정보는 lowerCase로 upperCase로 변환후 비교후 해당 enum객체를 반환하게 한다.
-     * @param dbData
-     * @return T
-     */
-    @Override
-    public T convertToEntityAttribute(String dbData) {
-        T[] enums = clazz.getEnumConstants();
-        try {
-            return Arrays.stream(enums)
-                         // dbData가 null이면 catch로 넘어가서 T의 ofNull을 반환할 것이다.
-                         .filter(en -> en.name().equals(dbData.toUpperCase()))
-                         // orElseThrow가 발생한다면 이건 디비쪽에서 컬럼의 enum이 확장되서 상태값이 늘었을 가능성이 아주 높다.
-                         .findFirst().orElseThrow(NoSuchElementException::new);
-        } catch(NullPointerException e) {
-            // dbData가 null이면 toUpperCase()때 npe가 발생할 것이다.     
-            // try - catch가 귀찮다면 애초에 null체크해서 defaultEnum을 반환해도 좋다.
-            return defaultEnum(enums);
-        }
-    }
-
-    /**
-     * 반복되는 공통 코드 줄이자
-     * @param enums
-     * @return T
-     */
-    private T defaultEnum(T[] enums) {
-        return Arrays.stream(enums)
-                     .filter(en -> en == en.defaultIfNull())
-                     .findFirst().orElseThrow(NoSuchElementException::new);
-    }
-
-}
-```
-
-그렇다면 이제 ActivityType도 최종 버전으로 향하자.
-
-```java
-/**
- * active type enum class
- */
-@AllArgsConstructor(access = AccessLevel.PROTECTED)
-public enum ActiveType implements EnumNullOperation<ActiveType> {
-
-    ACTIVE("활성"),
-    INACTIVE("비활성"),
-    BLACKLIST("블랙컨슈머"),
-    DELETE("탈퇴");
-
-    @Getter
-    private String description;
-
-    /**
-     * null이라면 활성 상태의 enum을 기존 enum으로 반환한다.
-     * @return ActiveType
-     */
-    @Override
-    public ActiveType defaultIfNull() {
-        return ActiveType.ACTIVE;
-    }
-
-    /**
-     * Custom Converter for lower case
-     */
-    public static class LowerCaseConverter extends LowerCaseEnumConverter<ActiveType> {
-        public LowerCaseConverter() {
-            super(ActiveType.class);
-        }
-    }
-
-}
-```
-이와 같이 LowerCaseConverter를 제공하자.
-
-단점이라면 그냥 단순한 enum 클래스에 무언가가 복잡하게 들어간다. 하지만 어쩔 수 없는 경우라면 이렇게 확장해서 사용하는 것도 좋다.
-
-```java
-public class Member {
-
-    // do some columns
-
-    /** 고객의 상태 */
-    @Convert(converter = ActivityType.LowerCaseConverter.class)
-    private ActivityType status;
-
-}
-```
 
