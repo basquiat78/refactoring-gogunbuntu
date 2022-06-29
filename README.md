@@ -1,632 +1,774 @@
 # refactoring-gogunbuntu
 리팩토링 고군분투기
 
-# enum을 활용하는 것이 이득이라면 적극적으로 활용해라
+# 사람들이 많이 쓰는 라이브러리를 써보자.
 
-## 목적
-주니어 개발자의 고민과 고군분투를 코드로 보면서 시니어 개발자 자신이 가지고 있는 지식을 전파해야하는 중요성을 느낀다.
+jpa가 아니더라도 어떤 객체에서 dto같은 객체로 정보를 옮기는 경우 많이 쓰는 라이브러리들이 있다.
 
-일단 이전 브랜치의 마지막이 enum을 적극 활용하라인데 이 브랜치는 이것을 좀더 확장하는 것이 주요 목적이다.
+그 중에 가장 많이 알려진 MapStruct를 사용해서 지루하고 반복되는 코드를 줄여보는게 목적이다.
 
-실제로 몇 년전 우아한형제 테크 블로그에서 functional interface를 통해서 enum을 얼마나 우아하게 사용했는지에 대한 블로그가 있다.
+흔한 정보를 담는 내용이고 이와 관련해서 구글에게 관련 정보를 물어봐도 잘 나온 기술 블로그도 상당히 많지만 그럼에도 불구하고 기록으로 남기기 위함이다.
 
-이게 5년전 글이네??? 시간 빠르다.
+# Entity or DTO
 
-(Java Enum 활용기)(https://techblog.woowahan.com/2527/)
+이전에는 ModelMapper라는 녀석을 통해서 entity에서 dto 또는 그 반대의 경우를 쉽게 만들었었다.
 
-~~자바 8 이전에는 이 방식을 선배 개발자분들이 좀 힘들게 사용했던 것을 본 기억이 난다. 형 지금은 너무 편해졌어!~~
+그러다가 이와 비슷한 MapStruct가 있고 성능이 훨씬 좋다는 글을 보게 되었다.
 
-아무튼 초기 지금 스타트업 회사에 들어왔을 때는 이전 시니어 분이 어느정도 틀을 만들어 논 상태였다.
+사실 리플렉션을 이용한 ModelMapper의 속도가 느리다고 알려져 있는데 이에 대해 고민한 적이 없다.      
 
-그때 myBatis를 썼는데 문제는 각 엔티티의 정보들이 enum으로 정의해서 사용할 필요성이 있던 코드가 다수 존재 했다.
+왜냐하면 속도/성능은 일단 먹는건가요 라는 스탠스로 던져버리고 잘 되기만 하면 된다는 마인드?      
 
-mySql에서는 컬럼 타입을 enum으로 정의할 수 있다. 그래서 create의 경우에는 정의된 코드가 들어오지 않으면 제약 조건에 의해 에러가 발생한다.
+아마도 리플렉션으로 인한 속도 성능의 저하보다는 다른 부분일 것이라고 추측하지만 첫 단추를 이걸로 했으니깐.
 
-jpa를 어느정도 공부했던 이 주니어 개발자는 myBatis에서 enum의 경우에는 매핑이 되지 않는다는 것을 알고 좀 독특하게 처리했는데 myBatis에서는 이것을 해결하기 위해 TypeHandler를 제공하기 때문에 사실 이것을 정의하고 myBatis관련 config.xml에 정의를 하면 끝난다.
+물론 리플렉션으로 객체를 계속적으로 생성하고 private 변수에 접근하기 위한 getDeclaredFields가 엄청 사용될 것이다.
 
-jpa의 Conveter처럼 xml mapper의 sql에 명시해서 사용할 수 있고 - 예를 들면 암복호화를 처리해야하는 경우 - 위에서처럼 글로벌하게 처리도 가능하다.
+값 세팅을 위해 setAccessible(true)와 인스턴스 비교...... perm 에러가 나는 경우도 있다고 했는데 본적이 없어서.....
 
-어째든 그렇다보니 jpa처럼 사용할 수 없어서 주니어 개발자는 '왜 jpa같은게 없는거야?'라고 욕을 하면서도 나름 멋진 방법으로 이 문제를 해결한거 같다.
+그래도 유의미하든 무의미하든 성능을 조금이라도 최적화 할 수 있다면 좋은 거 아닐까?
 
-근데 그 해결 방식이 어디서 많이 본 것이라 '이걸 어디서 봤더라?' 하고 생각하던 찰나에 조슈아 블로크의 [이펙티브 자바]에서 본 것이다.
+어째든 흔히 말하는 Boilerplate Code를 제거하기 위해서인데 JPA의 경우에는 정말 필요하지 않는 경우에는 Setter를 두는 것을 권장하지 않는다.
 
-책을 읽으면서 경험하지 못한 또는 저렇게 코드를 작성하는게 불편해 보이기 때문에 사실 공감할 수 없었던 내용이지만 실제로 주니어 개발자 입장에서 얼마나 고민했을까 하는 생각이 들었다.
+또한 이번에 신입분들이 작업한 백엔드 쪽의 소스들을 살펴보면서 dto 변환 코드가 여기저기 산재해 있다.
 
-이런 경험을 실제로 하다보니 그제서야 책의 내용이 공감가기 시작하더라.
+게다가 가끔은 '이걸 꼭 dto로 변환해야되?'라는 생각을 하기도 한다.
 
-챕터는 **태그 달린 클래스보다는 클래스 계층구조를 활용하라. page. 142** 참조.
+물론 의도치 않은 dirty checking을 경험하게 되면 또 해야할 거 같고.
 
-### 이렇게 한 시나리오
+게다가 서비스 오픈 이후 계속되는 변경/요구 사항들이 늘어나면서 엔티티에서 dto로 변환한다든가 dto에서 다른 dto로 변환하는 코드를 계속 만져야 하는 상황이 왔다.
 
-사실 더 복잡하긴 하지만 최대한 단순화해서 예를 들어볼까 한다.
+결국 지루하고 반복되지만 꼭 해야만 하는 보일러플레이트 코드가 발생할 수 밖에 없다.
 
-투자자의 등급에 따라서 해당 투자자가 한 건당 투자할 수 있는 금액 한도와 전체 투자할 수 있는 금액이 결정된다.
+햔재까지는 이와 같은 매퍼 라이브러리를 사용하지 않았기 때문에 이런 것이 있다는 것도 알려줄 겸 리팩토링을 하게 되었다.
 
-enum을 직접 매핑할 수 없으니 String으로 값을 가져와서 InvestorQualification라는 객체에 넣어서 계산을 하고 해당 객체를 들고 다니면서 어떤 비지니스 로직을 수행하고 있었다.
+# 그래서 MapStruct쓰면 좀 나아지나?
+
+일단 이런 것을 써야하는 이유가 먼저이다.
+
+왜 이것을 써야 하는지 불편한게 무엇인지 알아야 좀 더 게을러질 수 있기 때문이다.
+
+게으르다는 것은 '필요하지만 지루하고 반복되는 보일러플레이트 코드'를 개선해서 다른 곳에 더 집중하기 위해서이다.
+
+자 그럼 이전에는 이것을 어떻게 했을까??
+
+여기 [첫 번째 브랜치 follow-the-rule](https://github.com/basquiat78/refactoring-gogunbuntu/tree/follow-the-rule) 에서 사용한 엔티티와 dto를 보자.
 
 ```java
 /**
- * 투자자의 등급에 따른 투자자 한도 정보를 담는 객체
- * 테스트를 위해 ToString를 달아놈
+ * pizza entity
+ * builder의 경우에는 현재 선언된 모든 변수를 인자로 받는 생성자에 대해 빌드 패턴이 적용된다.
+ * 만일 수많은 변수들중 특정 인자들로만 빌드 패턴을 적용하고 싶다면
+ * <pre>
+ *   @ToString
+ *   @NoArgsConstructor(access = AccessLevel.PROTECTED)
+ *   public class Pizza {
+ *
+ *       @Builder
+ *       public Pizza(String name) {
+ *           this.name = name;
+ *       }
+ *
+ *       @Getter
+ *       private String name;
+ *
+ *       @Getter
+ *       private String dough;
+ *
+ *   }
+ * <pre>
+ *
+ * 빌드 패턴을 적용한 생성자에 어떤 조건을 주고 싶다면 if문을 활용해 IllegalArgumentException같은 것을 던지거나 
+ * Assert를 통해서 이것을 대신할 수도 있는 장점이 있지만 여기서는 그냥 간단하게 진행한다.
+ *
  */
-@ToString(of = {"limit", "totalLimit", "remain"})
-public class InvestorQualification {
+@Builder
+@ToString
+@AllArgsConstructor
+@NoArgsConstructor(access = AccessLevel.PROTECTED)
+public class Pizza {
 
-    /** 투자자 한도 정보를 계산할 때 사용하는 어떤 임의의 값 */
-    private static final BigDecimal SOME_FLAG = BigDecimal.valueOf(100);
+  /** 피자 이름 - 슈프림, 쉬림프, 페퍼로니 등등 */
+  @Getter
+  private String name;
 
-    /**
-     * 자격 enum 정의
-     */
-    private enum Qualification {
-        BRONZE,
-        SILVER,
-        GOLD;
-    }
+  /** 도우 : 호밀, 일반, 흑미 등등 */
+  @Getter
+  private String dough;
 
-    private final Qualification qualification;
+}
 
-    /** 건당 투자한도  금액 */
-    @Getter
-    private BigDecimal limit;
-    /** 전체 투자 금액 */
-    @Getter
-    private BigDecimal totalLimit;
-    /** 투자 가능한 남은 금액 */
-    @Getter
-    private BigDecimal remain;
+/**
+ * pizza Dto
+ */
+@Data
+@Builder
+@NoArgsConstructor
+@AllArgsConstructor
+public class PizzaDto {
 
-    /**
-     * 생성자 등급과 해당 투자자가 지금까지 투자한 금액 정보를 받는다.
-     * @param qualification
-     * @param current
-     */
-    public InvestorQualification(String qualification, BigDecimal current) {
-        this.qualification = Qualification.valueOf(qualification.toUpperCase());
-        this.calculate(current);
-    }
+  /** 피자 이름 - 슈프림, 쉬림프, 페퍼로니 등등 */
+  private String name;
 
-    /**
-     * 대충 이런 식으로 계산해서 세팅한다.
-     */
-    private void calculate(BigDecimal current) {
-        switch(qualification) {
-            case BRONZE:
-                this.limit = SOME_FLAG.divide(BigDecimal.TEN).add(BigDecimal.valueOf(10_000));
-                this.totalLimit = SOME_FLAG.divide(BigDecimal.TEN).add(BigDecimal.valueOf(100_000_000));
-                this.remain = this.totalLimit.subtract(current);
-                break;
-            case SILVER:
-                this.limit = SOME_FLAG.divide(BigDecimal.ONE).add(BigDecimal.valueOf(1_000_000));
-                this.totalLimit = SOME_FLAG.divide(BigDecimal.ONE).add(BigDecimal.valueOf(10_000_000_000L));
-                this.remain = this.totalLimit.subtract(current);
-                break;
-            case GOLD:
-                this.limit = SOME_FLAG.multiply(BigDecimal.valueOf(100_000_000));
-                this.totalLimit = SOME_FLAG.multiply(BigDecimal.valueOf(1_000_000_000_000L));
-                this.remain = this.totalLimit.subtract(current);
-                break;
-            default:
-                this.limit = BigDecimal.ZERO;
-                this.totalLimit = BigDecimal.ZERO;
-                this.remain = BigDecimal.ZERO;
-        }
-
-    }
+  /** 도우 : 호밀, 일반, 흑미 등등 */
+  private String dough;
 
 }
 ```
+앞서 언급했듯이 나는 개인적으로 엔티티쪽은 특별한 경우가 아니라면 그냥 그 역할에 충실하게 만들고 일반적으로 dto에 다음과 같은 코드를 넣는 것을 선호한다.
 
-이 코드가 잘 작동하기는 하는건지 일단 확인해 보자.
+```java
+/**
+ * entity -> dto
+ * @param entity
+ * @return PizzaDto
+ */
+public static PizzaDto entityToDto(Pizza entity) {
+    return PizzaDto.builder()
+                   .name("entity -> dto : " + entity.getName())
+                   .dough("entity -> dto : " + entity.getDough())
+                   .build();
+}
+```   
+
+물론 그 반대로 entitiy쪽에서 해도 무방하다. 하지만 이건 어디까지나 개발자의 선택일 뿐.
+
+누군가는 entityToDto는 엔티티쪽에 dtoToEntitiy는 dto쪽에 넣는 분도 봤는데 그것도 어디까지나 선택사항이다.
+
+어떻게 하든 어디까지나 여러분의 선택사항이다.
+
+```java
+/**
+ * pizza Dto
+ */
+@Data
+@Builder
+@NoArgsConstructor
+@AllArgsConstructor
+public class PizzaDto {
+
+  /** 피자 이름 - 슈프림, 쉬림프, 페퍼로니 등등 */
+  private String name;
+
+  /** 도우 : 호밀, 일반, 흑미 등등 */
+  private String dough;
+
+  /**
+   * entity -> dto
+   * @param entity
+   * @return PizzaDto
+   */
+  public static PizzaDto entityToDto(Pizza entity) {
+    return PizzaDto.builder()
+                   .name("entity -> dto : " + entity.getName())
+                   .dough("entity -> dto : " + entity.getDough())
+                   .build();
+  }
+
+  /**
+   * dto -> entity
+   * @return Pizza
+   */
+  public Pizza dtoToEntity() {
+    return Pizza.builder()
+                .name("dto -> entity : " + this.name)
+                .dough("dto -> entity : " + this.dough)
+                .build();
+  }
+
+}
+
+```
+
+아마두?
+
+잘 작동하는가? 두말하면 잔소리 그냥 확인해 보자.
 
 ```java
 class SimpleTest {
 
-    /**
-     * 맨 처음 작성되었던 InvestorQualification를 한번 확인차 확인해 본다.
-     * 뭐 잘 돌아갔으니 문제가 없었을 코드일 것이다.
-     *
-     */
-    @Test
-    @DisplayName("STEP1: dto에 매핑하기 위해서는 이런 불편함이 있다.")
-    void STEP1() {
-        BigDecimal current = BigDecimal.valueOf(10_000);
-        InvestorQualification bronze = new InvestorQualification("bronze", current);
-        System.out.println(bronze.toString());
-        InvestorQualification silver = new InvestorQualification("silver", current);
-        System.out.println(silver.toString());
-        InvestorQualification gold = new InvestorQualification("gold", current);
-        System.out.println(gold.toString());
-    }
+  @Test
+  void Convert_Test() {
+
+    Pizza pizza = Pizza.builder()
+                       .name("고구마피자")
+                       .dough("흑미")
+                       .build();
+    System.out.println(pizza.toString());
+    PizzaDto dto = PizzaDto.entityToDto(pizza);
+    System.out.println(dto.toString());
+    Pizza again = dto.dtoToEntity();
+    System.out.println(again.toString());
+  }
 
 }
 ```
 
-결과는?
+```
+result:
+
+Pizza(name=고구마피자, dough=흑미)
+PizzaDto(name=entity -> dto : 고구마피자, dough=entity -> dto : 흑미)
+Pizza(name=dto -> entity : entity -> dto : 고구마피자, dough=dto -> entity : entity -> dto : 흑미)
+```
+
+문득 이런 질문을 할 수 있다.
+
+'이런 예제로만으로는 굳이 MapStruct를 써야할 이유가 있나?'
+
+예제로만 본다는 굳이 MapStrcut를 써서 그에 맞는 관련 API를 보고 작성하는 노력을 할 이유가 없다.
+
+물론 지금이야 선언된 변수가 많지 않으니 불편하지 않을 것이다.
+
+하지만 실무에서 어떤 database로부터 가져온 entity에 선언된 변수들은 딸랑 2, 3개만 있지 않을 것이다.
+
+하지만 적든 많든 일단 저렇게 만들어 놓으면 끝이라고 생각하면 그거슨 큰 오산이다.
+
+보통 사이트에 따라 다르겠지만 선언된 변수가 10개가 훨씬 넘는 경우도 상당히 많다.
+
+빌드 패턴을 사용하든 그냥 생성자를 통해 dto나 엔티티를 생성후에 set으로 일일이 한땀한땀 넣어준다면 이게 여간 귀찮은게 아니다.       
+
+게다가 앞으로 어떤 요구사항이 올지도 모른다. 지금 당장 안해도 차후에 이런 지루한 작업을 또 해야할 수 도 있다는 의미이다.     
+
+그리고 이커머스쪽이라면 어떨까? 아시는 분들은 공감할 것이고 모르신다면 상상을 해보시면 될거 같다.
+
+스타트업이나 회사의 사업 자체가 빠르게 변하거나 변경을 요구한다면 저것은 결국 계속 관리를 해줘야 한다.
+
+~~추가하거나 삭제하거나~~
+
+그렇다는 것은 예기치 않은 휴먼 미스테이크가 발생할 소지가 충분하다.
+
+일단 만들어 놓기만 하면 수정하는 것은 일이 아니라고 할 수 있겠지만
+
+'나는 그런거 신경안쓰고 싶은데? 알아서 해주는거 없을까?'
+
+이런 생각이 들었다면 MapStruct를 통해 이것을 털어버리자.
+
+gradle에서 다음과 같이 dependency를 추가한다.
+
+```javascript
+plugins {
+    id 'org.springframework.boot' version '2.7.1'
+    id 'io.spring.dependency-management' version '1.0.11.RELEASE'
+    id 'java'
+}
+
+group 'io.basquiat'
+version '1.0-SNAPSHOT'
+sourceCompatibility = '11'
+
+repositories {
+    mavenCentral()
+}
+
+dependencies {
+
+    implementation 'org.springframework.boot:spring-boot-starter-web'
+
+    compileOnly group: 'org.projectlombok', name: 'lombok', version: '1.18.24'
+    implementation group: 'org.mapstruct', name: 'mapstruct', version: '1.5.2.Final'
+    implementation group: 'org.projectlombok', name: 'lombok-mapstruct-binding', version: '0.2.0'
+
+    annotationProcessor group: 'org.projectlombok', name: 'lombok', version: '1.18.24'
+    annotationProcessor group: 'org.mapstruct', name: 'mapstruct-processor', version: '1.5.2.Final'
+    annotationProcessor group: 'org.projectlombok', name: 'lombok-mapstruct-binding', version: '0.2.0'
+
+    testImplementation('org.springframework.boot:spring-boot-starter-test') {
+        exclude group: 'org.junit.vintage', module: 'junit-vintage-engine'
+    }
+
+}
+
+test {
+    useJUnitPlatform()
+}
+```
+lombok-mapstruct-binding은 스택오버플로우나 다른 분들의 블로그를 보면 순서로 인해 문제가 발생할 수 있기 때문에 순서상관없이 문제를 해결할 수 있게 만드는 라이브러리이다.
+
+이제 Mapper를 하나 만들어 보자
+
+```java
+@Mapper
+public interface PizzaMapper {
+
+  PizzaMapper INSTANCE = Mappers.getMapper(PizzaMapper.class);
+
+  @Mapping(target = "name", expression = "java(formatEntityName(dto.getName()))")
+  @Mapping(target = "dough", expression = "java(formatEntityDough(dto.getDough()))")
+  Pizza dtoToEntity(PizzaDto dto);
+
+  default String formatEntityName(String name) {
+    return "dto -> entity : " + name;
+  }
+
+  default String formatEntityDough(String dough) {
+    return "dto -> entity : " + dough;
+  }
+
+  @Mapping(target = "name", expression = "java(formatDtoName(entity.getName()))")
+  @Mapping(target = "dough", expression = "java(formatDtoDough(entity.getDough()))")
+  PizzaDto entityToDto(Pizza entity);
+
+  default String formatDtoName(String name) {
+    return "entity -> dto : " + name;
+  }
+
+  default String formatDtoDough(String dough) {
+    return "entity -> dto : " + dough;
+  }
+
+}
 
 ```
-InvestorQualification(limit=10010, totalLimit=100000010, remain=99990010)
-InvestorQualification(limit=1000100, totalLimit=10000000100, remain=9999990100)
-InvestorQualification(limit=10000000000, totalLimit=100000000000000, remain=99999999990000)
-```
 
-흠 일단 뭐 원하는 결과가 나오는 거 같다.
-
-거두절미하고 [이펙티브 자바]의 내용대로 클래스 계층구조를 활용해 적용하기에는 좀 무리가 있다.
-
-어떤 타입에 따라 반환하는 것이 아니고 디비로부터 넘어온 어떤 값 (그 값이 무엇이 되었든)
-
-결국 그 정보는 InvestorQualification 으로 귀결되는 코드이다.
-
-차라리 이럴거면..... 그냥 UtilClass로 정의하는 것이 좋았을 거 같은데?
-
-하지만 이렇게 객체를 만들어 놓고 여기저기서 사용하고 있었던 터라 나름 이유있는 방식이다.
-
-그리고 사실.... 뭐 리팩터링 해도 그렇게 크게 이득될 거 같진 않았지만 myBatis에서도 이것을 jpa처럼 사용할 수 있다는 것과 더불어 mySQL에 enum으로 정의할 때 소문자로 정의하면서 별어지는 몇 몇 갭을 좀 해결하고자 리팩토링한 케이스이다.
-
-최종적으로는 우아한형제의 테크 블로그의 enum활용처럼 functional interface와 람다를 활용해 enum 클래스로 녹여서 해결하게 되었다.
-
-### 진행하기전 번외편: 과거부터 전설처럼 내려온 관습적인 규약을 지켜야 할까? 이것도 code smell이라 할수 있을지?
-
-통상적으로 static final처럼 상수로 사용하거나 할때 여러분들은 변수 명을 대문자로 설정한다.
-
-뭐 대소문자로 작성해도 상관없지만 sonar lint같은 lint툴을 사용하면 고치라고 한다.
-
-enum의 경우도 이와 비슷한 열거 타입이기 때문에 enum의 경우도 소문자로 작성하면 이 메세지를 볼 수 있다.
-
-근데 왜?????
-
-자바 독을 보면 Enum Types에 대해 설명중 이런 글귀가 있다.
-
-'Because they are constants, the names of an enum type's fields are in uppercase letters.'
-
-어찌보면 이런 규약을 통해 "당신이 지금 바라보고 있는 '그' 변수는 상수다"라고 가시적으로 표현하는 것이 아닌가 생각이 든다.
-
-의문을 가지지 말자. 저렇게 쓴 데에는 다 이유가 있다.
-
-물론 자신이 아웃라이어라면? 소문자로 써도 무방하지 않을까?
-
-지금까지 이게 문제가 되었던 적은 없었응께....
-
-# 이것은 나의 고군분투기
-
-내가 신규모듈로 만들었던 어플리케이션들은 현재 jpa로 구성되어 있다.
-
-나는 enum도 클래스다라고 얘기를 해왔는데 결국 이것은 인터페이스를 구현할 수 있다는 것이다.
-
-사실 지금까지 인터페이스를 구현한 enum을 사용할 일이 없었는데 위에 언급했던 mySql의 상태 정보를 enum으로 설정했는데 그 값들이 소문자였다는 것이다.
-
-예를 들면 member테이블의 active라는 컬럼은 enum('active', 'inactive', 'blacklist', 'delete')처럼 정의를 해놨다.
-
-처음에는 관습적으로 다음과 같이 enum 클래스를 작성한다.
-
+기존의 코드를 그대로 옮기기 위해서 expression에서 특정 표현식을 사용했다.
 
 ```java
 /**
- * active type enum class
+ * pizza Dto
  */
-@AllArgsConstructor(access = AccessLevel.PROTECTED)
-public enum ActiveType {
+@Data
+@Builder
+@NoArgsConstructor
+@AllArgsConstructor
+public class PizzaDto {
 
-    ACTIVE("활성"),
-    INACTIVE("비활성"),
-    BLACKLIST("블랙컨슈머"),
-    DELETE("탈퇴");
+  /** 피자 이름 - 슈프림, 쉬림프, 페퍼로니 등등 */
+  private String name;
 
-    @Getter
-    private String description;
+  /** 도우 : 호밀, 일반, 흑미 등등 */
+  private String dough;
+
+  /**
+   * entity -> dto
+   * @param entity
+   * @return PizzaDto
+   */
+  public static PizzaDto entityToDto(Pizza entity) {
+    return PizzaMapper.INSTANCE.entityToDto(entity);
+  }
+
+  /**
+   * dto -> entity
+   * @return Pizza
+   */
+  public Pizza dtoToEntity() {
+    return PizzaMapper.INSTANCE.dtoToEntity(this);
+  }
+
+}
+```
+dto에서는 다음과 같이 처리하면 코드 한줄로 모든 것이 끝나버렸다.
+
+또한 내가 복잡한 dto내에서 해당 코드를 손댈 필요가 없다.
+
+프론트엔드 또는 view에 요청에 의해 dto에 변수가 추가되더라도 내가 더이상 손 될 것은 없다.
+
+물론 맵퍼 안에 몇가지 테스트를 위한 코드가 들어가 그렇긴 하지만 어째든!
+
+근데 문득 이런 생각이 들 것이다.
+
+'아니 그러면 엔티티가 몇개일지 모르는데 그 엔티티마다 dto로 매핑할려면 저 mapper를 구현해서 일일히 등록해야 하는 것이냐?'
+
+어쩔 수 없지 않을까? 모든 것에는 trade-off가 존재하는데?
+
+하지만 비슷한 도메인일 경우에는 묶어서 표현할 수 있을수 있다.
+
+예를 들면 다음과 같이
+
+```java
+@Mapper
+public interface PizzaMapper {
+
+  PizzaMapper INSTANCE = Mappers.getMapper(PizzaMapper.class);
+
+  @Mapping(target = "name", expression = "java(formatEntityName(dto.getName()))")
+  @Mapping(target = "dough", expression = "java(formatEntityDough(dto.getDough()))")
+  Pizza dtoToEntity(PizzaDto dto);
+
+  @Mapping(target = "name", expression = "java(formatEntityName(dto.getName()))")
+  @Mapping(target = "dough", expression = "java(formatEntityDough(dto.getDough()))")
+  PizzaTwo dtoToEntity(PizzaDtoTwo dto);
+
+  default String formatEntityName(String name) {
+    return "dto -> entity : " + name;
+  }
+
+  default String formatEntityDough(String dough) {
+    return "dto -> entity : " + dough;
+  }
+
+  @Mapping(target = "name", expression = "java(formatDtoName(entity.getName()))")
+  @Mapping(target = "dough", expression = "java(formatDtoDough(entity.getDough()))")
+  PizzaDto entityToDto(Pizza entity);
+
+  @Mapping(target = "name", expression = "java(formatDtoName(entity.getName()))")
+  @Mapping(target = "dough", expression = "java(formatDtoDough(entity.getDough()))")
+  PizzaDtoTwo entityToDto(PizzaTwo entity);
+
+  default String formatDtoName(String name) {
+    return "entity -> dto : " + name;
+  }
+
+  default String formatDtoDough(String dough) {
+    return "entity -> dto : " + dough;
+  }
 
 }
 ```
 
-하지만 이것을 사용하는 순간 seelct문이나 insert문에서 에러가 발생한다.
+그레이들이면 build > generated > annotationProcessor 하위 폴더, 메이븐이라면 target폴더에 코드젠이 된것을 볼 수 있다.
 
-mySql은 옵션에 따라 테이블명/컬럼의 대소문자 구분을 무시할 수 있거나 엄격하게 구분할 수 있다.
+아래가 바로 생성된 클래스이다.
+```java
+package domain.mapper;
 
-하지만 컬럼 생성시 만일 enum으로 설정할 경우 enum에 정의 된 값은 대소문자를 구분하기 때문에 이런 제약이 걸려 에러가 발생하는 것이다.
+import domain.dto.PizzaDto;
+import domain.dto.PizzaDtoTwo;
+import domain.entity.Pizza;
+import domain.entity.PizzaTwo;
+import java.text.DecimalFormat;
+import javax.annotation.processing.Generated;
 
-일단 울며겨자먹기로 소문자로 바꾼다.
+@Generated(
+        value = "org.mapstruct.ap.MappingProcessor",
+        date = "2022-06-29T19:50:51+0900",
+        comments = "version: 1.5.2.Final, compiler: IncrementalProcessingEnvironment from gradle-language-java-6.7.jar, environment: Java 11.0.10 (AdoptOpenJDK)"
+)
+public class PizzaMapperImpl implements PizzaMapper {
 
+  @Override
+  public Pizza dtoToEntity(PizzaDto dto) {
+    if ( dto == null ) {
+      return null;
+    }
+
+    Pizza.PizzaBuilder pizza = Pizza.builder();
+
+    pizza.name( formatEntityName(dto.getName()) );
+    pizza.dough( formatEntityDough(dto.getDough()) );
+    pizza.price( priceToLong(dto.getPrice()) );
+
+    return pizza.build();
+  }
+
+  @Override
+  public PizzaTwo dtoToEntity(PizzaDtoTwo dto) {
+    if ( dto == null ) {
+      return null;
+    }
+
+    PizzaTwo.PizzaTwoBuilder pizzaTwo = PizzaTwo.builder();
+
+    pizzaTwo.name( formatEntityName(dto.getName()) );
+    pizzaTwo.dough( formatEntityDough(dto.getDough()) );
+    pizzaTwo.price( priceToLong(dto.getPrice()) );
+
+    return pizzaTwo.build();
+  }
+
+  @Override
+  public PizzaDto entityToDto(Pizza entity) {
+    if ( entity == null ) {
+      return null;
+    }
+
+    PizzaDto.PizzaDtoBuilder pizzaDto = PizzaDto.builder();
+
+    pizzaDto.price( new DecimalFormat( "#,##0" ).format( entity.getPrice() ) );
+
+    pizzaDto.name( formatDtoName(entity.getName()) );
+    pizzaDto.dough( formatDtoDough(entity.getDough()) );
+
+    return pizzaDto.build();
+  }
+
+  @Override
+  public PizzaDtoTwo entityToDto(PizzaTwo entity) {
+    if ( entity == null ) {
+      return null;
+    }
+
+    PizzaDtoTwo.PizzaDtoTwoBuilder pizzaDtoTwo = PizzaDtoTwo.builder();
+
+    pizzaDtoTwo.price( new DecimalFormat( "#,##0" ).format( entity.getPrice() ) );
+
+    pizzaDtoTwo.name( formatDtoName(entity.getName()) );
+    pizzaDtoTwo.dough( formatDtoDough(entity.getDough()) );
+
+    return pizzaDtoTwo.build();
+  }
+}
+
+```
+
+MapStruct가 해당 mapper를 구현한 구현체를 생성할 텐데 default 메소드를 작성해 expression에서 사용할 수 있도록 한다.
+
+메서드 시그니처로 인해 오버로딩이 가능하니 좀 코드가 지져분하게 보일 여지가 있어도 변경점이 한곳으로 모이기 때문에 유지보수에 도움이 될 수도(?) 있다.
+
+expression이나 여타 옵션들을 제공하기 때문에 입맛에 맞춰 사용할 수 있다.
+
+또한 소스 객체로부터 생성한 타겟 객체로 매핑시 변수명의 갭이 존재한다면 @Mapping안에 source와 target으로 변수명을 설정해 매핑도 가능하다.
+
+한편으로는 expression부분이 저렇게 스트링으로 표현해야해서 오타 발생 및 휴먼 미스테이크로 인해 실행전까지 에러 유무를 알수가 없다.
+
+'차라리 그냥 로우하게 하는게 편하겠는데?'라는 생각이 들 수도 있다.
+
+# MapStruct 사용시 마주할 수 있는 정책과 전략 이슈
 
 ```java
 /**
- * active type enum class
+ * pizza Dto
  */
-@AllArgsConstructor(access = AccessLevel.PROTECTED)
-public enum ActiveType {
+@Data
+@Builder
+@NoArgsConstructor
+@AllArgsConstructor
+public class PizzaDto {
 
-    active("활성"),
-    inactive("비활성"),
-    blacklist("블랙컨슈머"),
-    delete("탈퇴");
+  /** 피자 이름 - 슈프림, 쉬림프, 페퍼로니 등등 */
+  private String name;
 
-    @Getter
-    private String description;
+  /** 도우 : 호밀, 일반, 흑미 등등 */
+  private String dough;
 
-}
-```
-솔직히 문제없이 잘 돌아간다. 다만 lint툴을 사용한다면 보게 된 메세지는 눈감고 넘어가야 한다.
+  /** 가격 */
+  private String price;
 
-하지만 나의 경우에는 그러고 싶지 않았다. 그래서 DBA분과 이 이야기를 했는데 이제는 어쩔 수 없다고 한다.
+  /** 그 무언가가 될 정보 */
+  private String doSome;
 
-DBA의 눈빛에서 감지할 수 있었던 것은 '왜 바꿔야 하지? 바꿔서 어떤 이득을 얻을 수 있는지 내게 설명해줘.'다.
+  /**
+   * entity -> dto
+   * @param entity
+   * @return PizzaDto
+   */
+  public static PizzaDto entityToDto(Pizza entity) {
+    return PizzaMapper.INSTANCE.entityToDto(entity);
+  }
 
-개발자 기준에서 이것을 위와 같이 대문자로 해야하는 이유로 설득할 자신이 없었다.
+  /**
+   * dto -> entity
+   * @return Pizza
+   */
+  public Pizza dtoToEntity() {
+    return PizzaMapper.INSTANCE.dtoToEntity(this);
+  }
 
-~~물론 그분도 설득당하지 않을 자신이 있어 보였다. 의문의 패배~~
-
-게다가 디폴트 값이 없어 null로 세팅되어 있다. 실제로 null인 경우에는 기본값을 active로 하라는 말만 들었다.
-
-물론 코드 레벨에서 디폴트 값을 세팅해서 해주면 되지만 다른 어플리케이션에서 이 테이블의 정보를 생성할 때 null로 들어간 데이터가 너무 많았다.
-
-고민하다가 결국에는 이것을 처리해줄 컨버터를 만들기로 했다.
-
-처음에는 단순하게 생각해서 다음과 같이 컨버터를 하나 만들었다.
-
-```java
-/**
- * upper/lower case를 적용한다.
- */
-@Converter
-public class ActiveTypeLowerCaseConverter implements AttributeConverter<ActiveType, String> {
-
-    /**
-     * enum -> db
-     * @param attribute
-     * @return String
-     */
-    @Override
-    public String convertToDatabaseColumn(ActiveType attribute) {
-        // null이면 default 세팅해준다.
-        if(attribute == null) {
-            return ActiveType.ACTIVE.name().toLowerCase();
-        }
-        return attribute.name().toLowerCase();
-    }
-
-    /**
-     * db -> enum
-     * @param dbData
-     * @return
-     */
-    @Override
-    public ActiveType convertToEntityAttribute(String dbData) {
-        if(isEmpty(dbData)) {
-            return ActiveType.ACTIVE;
-        }
-        return ActiveType.valueOf(dbData.toUpperCase());
-    }
-
-}
-```
-속으로
-
-'음 깔끔해! null인 경우도 다 처리했어'
-
-하지만 생각해 보니 이게 한두개가 아니네??? 같은 코드로 생성될 컨버터의.. 아! 물론 어림도 없다.
-
-결국 제네릭하게 처리하는 방식으로 진행해야 한다.
-
-그렇다면 무엇이 필요할까?
-
-해답은 역시 조슈아 블로크의 [이펙티브 자바]에서도 찾을 수 있다.
-
-챕터는 **확장할 수 있는 열거 타입이 필요하면 인터페이스를 사용하라. page. 232** 참조
-
-처음에는 이런 생각을 했다.
-
-'일단은 대문자를 소문자로 처리하기 위함이니 LowerCaseEnumConverter를 하나 만들기로 한다.
-
-
-```java
-@Converter
-@RequiredArgsConstructor
-public class LowerCaseEnumConverter<T extends Enum<T>> implements AttributeConverter<T, String> {
-
-    private final Class<T> clazz;
-
-    /**
-     * enum 상수 값을 가져와서 lowerCase로 반환한다.
-     * @param attribute
-     * @return String
-     */
-    @Override
-    public String convertToDatabaseColumn(T attribute) {
-        return attribute.name().toLowerCase();
-    }
-
-    /**
-     * 디비 정보는 lowerCase로 upperCase로 변환후 비교후 해당 enum객체를 반환하게 한다.
-     * @param dbData
-     * @return T
-     */
-    @Override
-    public T convertToEntityAttribute(String dbData) {
-        T[] enums = clazz.getEnumConstants();
-        return Arrays.stream(enums)
-                     .filter(en -> en.name().equals(dbData.toUpperCase()))
-                     .findFirst()
-                     .get();
-    }
-
-}
-
-```
-근데 이렇게 만들고 보니 문제가 하나 있다. null처리를 못한다는 것이다.
-
-제너릭하게 처리할 수 있는 기반을 마련했지만 null인 경우 default값을 세팅할 수가 없었다.
-
-그렇다고 일일이 instanceof로 비교해가며 해당 enum을 찾아서 처리한다?
-
-~~아 물론 그렇게 할까? 라고 잠시 고민을 했다.~~
-
-하지만 이것은 좀 뻘짓이다.
-
-가능이야 하겠지.
-
-각 enum마다 null이면 기본값으로 반환할 메소드를 같은 이름으로 만들어 놓고 위에 언급한 무식한 방법으로도 가능 할것이다.
-
-instanceof로 비교후 해당되는 enum으로 캐스팅! 하고 메소드 호출하면 끗!
-
-아마두? 사실 무서워서 해보진 않았다.
-
-[이펙티브 자바]에서 위에 언급했던 챕터를 보면 처음보는 신기한 표현을 보게 된다.
-
-```java
-private static <T extends Enum<T> & Operation> void test(Class<T> opEnumType, double x, double y) {
-    for (Operation op : opEnumType.getEnumConstants())
-    System.out.printf("%f %s %f = %f%n", x, op, y, op.apply(x, y));
-}
-```
-
-이거 처음 봤을 때 "우와 '&'를 통해서 제너릭과 인터페이스를 multiple하게 처리할 수 있다니....."
-
-써본적이 없으니 마냥 신기.
-
-찾아보니 Bounded Type Parameters라고 한다.
-
-[Generics Lesson](https://web.archive.org/web/20081217034134/http://java.sun.com/docs/books/tutorial/java/generics/index.html)
-
-이와 관련 [이펙티브 자바]에서 관련 설명이 존재한다. 사실 말이 좀 어렵긴 하지만 어떻게 작동하는지 알게 되었다.
-
-제네릭이 이렇게 멋지구나. 아 물론 어렵기도 하다.
-
-자. 이제는 interface를 하나 만들어 볼 생각이다.
-
-Null을 체크하기 위한 인터페이스를 하나 만들어 본다.
-
-```java
-/**
- * 만일 attribute가 null인 경우
- * 이것을 구현한 enum class에서 default값을 반환하게 만든다. 
- */
-public interface EnumNullOperation<T> {
-    T defaultIfNull();
 }
 
 /**
- * active type enum class
+ * pizza entity
  */
-@AllArgsConstructor(access = AccessLevel.PROTECTED)
-public enum ActiveType implements EnumNullOperation<ActiveType> {
+@Builder
+@ToString
+@AllArgsConstructor
+@NoArgsConstructor(access = AccessLevel.PROTECTED)
+public class Pizza {
 
-    ACTIVE("활성"),
-    INACTIVE("비활성"),
-    BLACKLIST("블랙컨슈머"),
-    DELETE("탈퇴");
+  /** 피자 이름 - 슈프림, 쉬림프, 페퍼로니 등등 */
+  @Setter
+  @Getter
+  private String name;
 
-    @Getter
-    private String description;
+  /** 도우 : 호밀, 일반, 흑미 등등 */
+  @Setter
+  @Getter
+  private String dough;
 
-    /**
-     * null이라면 활성 상태의 enum을 반환한다.
-     * @return ActiveType
-     */
-    @Override
-    public ActiveType defaultIfNull() {
-        return ActiveType.ACTIVE;
-    }
+  /** 가격 */
+  @Setter
+  @Getter
+  private long price;
+
+  @Setter
+  @Getter
+  private String maker;
 
 }
 
 ```
-그렇다면 ActiveType은 위와 같이 변경될 것이다.
 
-이렇게 한다면 각 enum마다 db에서 null이거나 엔티티에 세팅을 하지 않았을 경우 기본 값을 세팅하게 된다.
+위 코드처럼 어플리케이션내에서는 항상 entity와 dto는 같은 필드를 갖는다는 것을 보장할 수 없다.
 
-자 그럼 이걸 언제 쓰겠다는 것인가?
+당연한 이야긴데 dto의 특징 자체가 단순하게 entity의 정보를 그대로 가져온다는 개념으로만 보면 백엔드에서 view 또는 프론트에 보낼 수 있는 정보가 한정된다.
+
+그래서 여러 정보들을 조합해 dto에 담아 보내게 되는데 다음과 같다고 생각해 보자.
+
+dto에서는 어떤 비즈니스 로직에 의해 세팅될 doSome이라는 필드가 있고 엔티티에는 해당 피자를 발명한 사람의 정보를 담는다고 해보자.
+
+하지만 해당 dto는 해당 피자를 발명한 사람의 정보는 여기서는 필요하지 않다.
+
+그렇다면 기존의 테스트를 실행하면 어떻게 될까?
+
+100프로 다음과 같은 warning이 뜰것이다.
+
+```
+Warning: XXXX java: Unmapped target property: "maker".
+Warning: XXXX java: Unmapped target property: "doSome".
+```
+
+단순 경고 로그라 실행시 문제될 것은 없다.        
+
+하지만 이런 경고문이 로그로 남는건 문제될게 없다고 해도 찜찜하다.
+
+MapStrcut에는 정책과 전략을 제공한다.
+
+## Policy
+- unmappedSourcePolicy
+  - default : IGNORE
+- unmappedTargetPolicy
+  - default : WARN
+- typeConversionPolicy
+  - default : WARN
+    IGNORE, WARN, ERROR 3가지가 적용되는데 그 default설정이 위에서처럼 각기 다르다.
+
+
+## Strategy
+- nullValueMappingStrategy
+  - default :  RETURN_NULL
+  - RETURN_DEFAULT
+- nullValuePropertyMappingStrategy
+  - default : SET_TO_NULL
+  - SET_TO_DEFAULT
+  - IGNORE
+
+때론 엔티티와 dto의 상태를 항상 같게 유지하고 싶은 경우도 있을 것이다.
+
+그렇다면 몇가지 방법이 있는데 Mapper안에 선언한 @Mapping에서 이것을 일일히 적용하는 방법이 있다.
+
+또는 unmappedTargetPolicy정책을 엄격하게 가져기기 위해 default를 WARN에서 ERROR로 변경해 무조건 컴파일시에 에러를 발생시킨다던가?
+
+하지만 여기서는 그렇게 세세한 것보다는 엔티티와 dto는 항상 같은 변수를 가질 필요가 없다거나 할때 Warn을 줄이고자 한다.      
+
+다르다면 @Mapping의 source와 target를 설정해 세팅해 주는 방식으로 가는게 최우선이다.      
+
+다음 밑에서처럼 설정을 해주면 된다.     
+
+Baeldong 사이트를 가보면 이것을 Configuration으로 빼고 이름을 주어 config로 불러오게 하는 방법을 추천한다.
+
+[Ignoring Unmapped Properties with MapStruct](https://www.baeldung.com/mapstruct-ignore-unmapped-properties)
+
 
 ```java
-@Converter
-@RequiredArgsConstructor
-public class LowerCaseEnumConverter<T extends Enum<T> & EnumNullOperation<T>> implements AttributeConverter<T, String> {
+@Mapper(unmappedTargetPolicy = ReportingPolicy.IGNORE)
+public interface PizzaMapper {
 
-    private final Class<T> clazz;
+  PizzaMapper INSTANCE = Mappers.getMapper(PizzaMapper.class);
 
-    /**
-     * enum 상수 값을 가져와서 lowerCase로 반환한다.
-     * @param attribute
-     * @return String
-     */
-    @Override
-    public String convertToDatabaseColumn(T attribute) {
-        if(attribute == null) {
-            T[] enums = clazz.getEnumConstants();
-            // EnumNullOperation을 구현한 enum에 정의된 defaultIfNull()을 통해서 해당 default enum정보를 반환한다.
-            attribute = defaultEnum(enums);
-        }
-        return attribute.name().toLowerCase();
-    }
+  @Mapping(target = "name", expression = "java(formatEntityName(dto.getName()))")
+  @Mapping(target = "dough", expression = "java(formatEntityDough(dto.getDough()))")
+  @Mapping(target = "price", expression = "java( priceToLong(dto.getPrice()) )")
+  Pizza dtoToEntity(PizzaDto dto);
 
-    /**
-     * 디비 정보는 lowerCase로 upperCase로 변환후 비교후 해당 enum객체를 반환하게 한다.
-     * @param dbData
-     * @return T
-     */
-    @Override
-    public T convertToEntityAttribute(String dbData) {
-        T[] enums = clazz.getEnumConstants();
-        try {
-            return Arrays.stream(enums)
-                         // dbData가 null이면 catch로 넘어가서 T의 defaultIfNull을 반환할 것이다.
-                         .filter(en -> en.name().equals(dbData.toUpperCase()))
-                         // orElseThrow가 발생한다면 이건 디비쪽에 컬럼의 enum이 확장되었을 가능성이 있다.
-                         .findFirst().orElseThrow(NoSuchElementException::new);
-        } catch(NullPointerException e) {
-            return defaultEnum(enums);
-        }
-    }
+  @Mapping(target = "name", expression = "java(formatEntityName(dto.getName()))")
+  @Mapping(target = "dough", expression = "java(formatEntityDough(dto.getDough()))")
+  @Mapping(target = "price", expression = "java( priceToLong(dto.getPrice()) )")
+  PizzaTwo dtoToEntity(PizzaDtoTwo dto);
 
-    /**
-     * 반복되는 공통 코드 줄이자
-     * @param enums
-     * @return T
-     */
-    private T defaultEnum(T[] enums) {
-        return Arrays.stream(enums)
-                     .filter(en -> en == en.defaultIfNull())
-                     .findFirst().orElseThrow(NoSuchElementException::new);
-    }
+  /**
+   * 변경이 잘되고 있는지 확인하기 위한 임의 메소드
+   * @param name
+   * @return String
+   */
+  default String formatEntityName(String name) {
+    return "dto -> entity : " + name;
+  }
+
+  /**
+   * 변경이 잘되고 있는지 확인하기 위한 임의 메소드
+   * @param dough
+   * @return String
+   */
+  default String formatEntityDough(String dough) {
+    return "dto -> entity : " + dough;
+  }
+
+  @Mapping(target = "name", expression = "java(formatDtoName(entity.getName()))")
+  @Mapping(target = "dough", expression = "java(formatDtoDough(entity.getDough()))")
+  @Mapping(target = "price", numberFormat = "#,##0")
+  PizzaDto entityToDto(Pizza entity);
+
+  @Mapping(target = "name", expression = "java(formatDtoName(entity.getName()))")
+  @Mapping(target = "dough", expression = "java(formatDtoDough(entity.getDough()))")
+  @Mapping(target = "price", numberFormat = "#,##0")
+  PizzaDtoTwo entityToDto(PizzaTwo entity);
+
+  /**
+   * 변경이 잘되고 있는지 확인하기 위한 임의 메소드
+   * @param name
+   * @return String
+   */
+  default String formatDtoName(String name) {
+    return "entity -> dto : " + name;
+  }
+
+  /**
+   * 변경이 잘되고 있는지 확인하기 위한 임의 메소드
+   * @param dough
+   * @return String
+   */
+  default String formatDtoDough(String dough) {
+    return "entity -> dto : " + dough;
+  }
+
+  /**
+   * long에서 string으로 numberFormat적용시 구분자 ','가 들어가기 때문에 다음과 제거후 롱으로 반환한다.
+   * @param value
+   * @return Long
+   */
+  default Long priceToLong(String value) {
+    return Long.valueOf(value.replace(",", ""));
+  }
 
 }
-
 ```
+저런 것도 할 수 있다는 것을 예제에 추가한 최종 버전이 되시겠다.
 
-하지만 이것을 그대로 사용할려고 엔티티에 다음과 같이
+일단 뭔가 번잡해 보이는건 함정이지만 기존의 dto와 entity쪽으로 분산된 것이 하나의 변경점으로 모인다는 것은 나름 괜찮다.
+
+그리고 예제 자체가 너무 간결해서 이걸 써야 할 이유를 찾지 못할 수도 있다.
+
+하지만 당장 실무에서 10개 또는 그 이상의 엔티티를 dto로 변환하는 작업을 하게 된다면 어떨까?
 
 ```java
-public class Member {
-
-    // do some columns
-
-    /** 고객의 상태 */
-    @Convert(converter = LowCaseEnumConverter<ActivityType>.class)
-    private ActivityType status;
-
-}
+// 이러고 싶진 않아...ㅠㅠ
+SomeDTO.builder()
+       .a(doSomething)
+       .b(doSomething)
+       .c(doSomething)
+       .d(doSomething)
+       .e(doSomething)
+       .f(doSomething)
+       .g(doSomething)
+       .h(doSomething)
+       .i(doSomething).j(doSomething).k(doSomething)................
+       .build();
 ```
 
-가능할까? 아마도 'Cannot select from parameterized type'라고 ide에서 오류를 보여줄 것이다.
+하나에 몰아놓기 보다는 그냥 관리차원에서 나눠서 작성하는 것이 작성해야할 인터페이스가 늘어날 지언정 변경에 유연할 수 있다는 점은 분명 매력적인 부분이다.
 
-결국에는 자바의 특징을 최대한 활용해서 해당 Enum에 그 enum에 맞게 convert를 선언해서 가져와 사용하는 방식으로 변경하자.
+현재 남겨진 소스는 dto내부에 변환해주는 메소드를 넣었는데 이마저도 싫다면 PizzaMapper에서 직접적으로 호출해서 사용할 수 있다.
 
-그렇다면 기존의 LowerCaseEnumConverter는 추상 클래스로 만들자.
+회사에서는 dto에서도 불필요한 메소드라 판단해서 다 지웠지만 이 브랜치에서는 그대로 놔둔다.
 
-인터페이스가 default 메소드를 통해 구현된 메소드를 가지게 되면서 추상 클래스와 인터페이스의 차이가 자바 8이후 살짝 미묘해진 경향이 있지만 추상 클래스는 내부에 변수, 생성자, private 메소드를 가질 수 있다.
+나의 경우에는 명시적인 것이 좋아서 dto 남겨두는 것을 선호하지만 동료들은 그마저도 싫은듯.
 
-애초에 그냥 클래스였던 녀석이기 때문에 추상 클래스로 만들자.
+그런 의견은 존중한다.
 
-```java
-/**
- * lower case처리를 위한 추상 클래스
- * created by basquiat
- */
-@Converter
-@RequiredArgsConstructor
-public abstract class LowerCaseEnumConverter<T extends Enum<T> & EnumNullOperation<T>> implements AttributeConverter<T, String> {
+# At a Glance
 
-    private final Class<T> clazz;
+주니어분들께서 왜 이걸 이제 알려주냐고 나한테 오히려 꾸사리를 줬다.
 
-    /**
-     * enum 상수 값을 가져와서 lowerCase로 반환한다.
-     * @param attribute
-     * @return String
-     */
-    @Override
-    public String convertToDatabaseColumn(T attribute) {
-        if(attribute == null) {
-            T[] enums = clazz.getEnumConstants();
-            // enum에 정의된 ofNull()을 통해서 해당 default enum정보를 반환한다.
-            attribute = defaultEnum(enums);
-        }
-        return attribute.name().toLowerCase();
-    }
+~~미안해. 화내지마. 솔직히 나도 이거 써야겠다고 생각못했어.~~
 
-    /**
-     * 디비 정보는 lowerCase로 upperCase로 변환후 비교후 해당 enum객체를 반환하게 한다.
-     * @param dbData
-     * @return T
-     */
-    @Override
-    public T convertToEntityAttribute(String dbData) {
-        T[] enums = clazz.getEnumConstants();
-        try {
-            return Arrays.stream(enums)
-                         // dbData가 null이면 catch로 넘어가서 T의 ofNull을 반환할 것이다.
-                         .filter(en -> en.name().equals(dbData.toUpperCase()))
-                         // orElseThrow가 발생한다면 이건 디비쪽에서 컬럼의 enum이 확장되서 상태값이 늘었을 가능성이 아주 높다.
-                         .findFirst().orElseThrow(NoSuchElementException::new);
-        } catch(NullPointerException e) {
-            // dbData가 null이면 toUpperCase()때 npe가 발생할 것이다.     
-            // try - catch가 귀찮다면 애초에 null체크해서 defaultEnum을 반환해도 좋다.
-            return defaultEnum(enums);
-        }
-    }
+하지만 이래나 저래나 완벽한 자동완성은 없다.
 
-    /**
-     * 반복되는 공통 코드 줄이자
-     * @param enums
-     * @return T
-     */
-    private T defaultEnum(T[] enums) {
-        return Arrays.stream(enums)
-                     .filter(en -> en == en.defaultIfNull())
-                     .findFirst().orElseThrow(NoSuchElementException::new);
-    }
+그럼에도 이런 라이브러리의 존재는 어디에 관점을 더 포커싱할 것인가에 대한 결과물이 아닐까?
 
-}
-```
+지금까지 한동안은 MapStruct를 사용할 일이 없었는데 최근 어떻게든 서비스를 오픈해야 했던 회사의 사정상 코드 스멜이 여기저기 퍼져있던 것들을 돌아 볼 기회가 없었다.
 
-그렇다면 이제 ActivityType도 최종 버전으로 향하자.
+최근에서야 이 부분을 봐야할 시점이 오면서 하나씩 처리해 나가고 있다.
 
-```java
-/**
- * active type enum class
- */
-@AllArgsConstructor(access = AccessLevel.PROTECTED)
-public enum ActiveType implements EnumNullOperation<ActiveType> {
+이때 활용성이 높은 라이브러리의 존재가 너무 고맙게 느껴진다.    
 
-    ACTIVE("활성"),
-    INACTIVE("비활성"),
-    BLACKLIST("블랙컨슈머"),
-    DELETE("탈퇴");
-
-    @Getter
-    private String description;
-
-    /**
-     * null이라면 활성 상태의 enum을 기존 enum으로 반환한다.
-     * @return ActiveType
-     */
-    @Override
-    public ActiveType defaultIfNull() {
-        return ActiveType.ACTIVE;
-    }
-
-    /**
-     * Custom Converter for lower case
-     */
-    public static class LowerCaseConverter extends LowerCaseEnumConverter<ActiveType> {
-        public LowerCaseConverter() {
-            super(ActiveType.class);
-        }
-    }
-
-}
-```
-이와 같이 LowerCaseConverter를 제공하자.
-
-단점이라면 그냥 단순한 enum 클래스에 무언가가 복잡하게 들어간다. 하지만 어쩔 수 없는 경우라면 이렇게 확장해서 사용하는 것도 좋다.
-
-```java
-public class Member {
-
-    // do some columns
-
-    /** 고객의 상태 */
-    @Convert(converter = ActivityType.LowerCaseConverter.class)
-    private ActivityType status;
-
-}
-```
 
