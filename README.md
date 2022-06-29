@@ -3,7 +3,7 @@
 
 # 목록
 [1. follow the rules](https://github.com/basquiat78/refactoring-gogunbuntu/tree/follow-the-rule)   
-[2. usage positively enums](https://github.com/basquiat78/refactoring-gogunbuntu/tree/2-usage-positively-enums)
+[2. usage positively enums](https://github.com/basquiat78/refactoring-gogunbuntu/tree/2-usage-positively-enums)      
 [3. usage map struct](https://github.com/basquiat78/refactoring-gogunbuntu/tree/3-usage-map-struct) 
 
 # 목적
