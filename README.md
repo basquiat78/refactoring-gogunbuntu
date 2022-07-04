@@ -4,7 +4,8 @@
 # 목록
 [1. follow the rules](https://github.com/basquiat78/refactoring-gogunbuntu/tree/follow-the-rule)   
 [2. usage positively enums](https://github.com/basquiat78/refactoring-gogunbuntu/tree/2-usage-positively-enums)      
-[3. usage map struct](https://github.com/basquiat78/refactoring-gogunbuntu/tree/3-usage-map-struct) 
+[3. usage map struct](https://github.com/basquiat78/refactoring-gogunbuntu/tree/3-usage-map-struct)       
+[4. equals()와 hashCode()](https://github.com/basquiat78/refactoring-gogunbuntu/tree/4-equals-hashcode)
 
 # 목적
 최근 어찌어찌 서비스 오픈을 하게 되었다.      
