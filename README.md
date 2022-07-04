@@ -1,868 +1,832 @@
 # refactoring-gogunbuntu
 리팩토링 고군분투기
 
-# 그렇게 짠 코드에는 다 이유가 있다.
+# BigDecimal과 BigInteger를 만나다.
 
-주니어 개발자분과 코드를 훝어보며 리팩토링을 하던 도중 문득 그 동료분이 이런 질문을 한다.         
+IT밥을 먹은 지 8년차가 되던 시점에 이직을 고려할 때 같이 일했던 선배님이 넌지시 연락을 했다.
 
-"제가 이렇게 하면 저렇게 나올것이다라고 생각했는데 하루 이틀을 고민해도 도저히 해결을 못한 코드가 있습니다.
+'같이 블록체인 할래?'
 
-결국에는 이것을 돌리고 돌려서 어떻게 해결하긴 했는데요. 좀 더 좋은 방법이 없을까요??"
+~~같이 계곡 갈래?~~
 
-갑자기 오래전 어느 동료분과 이 문제로 몇일을 고생했던 기억이 확 떠오른다.         
+|Primitive Type|Wrapper Class|
+|:---:|:---:|
+|byte|Byte|
+|short|Short|
+|int|Integer|
+|long|Long|
+|float|Float|
+|double|Double|
+|boolean|Boolean|
+|char|Character|
 
-# 과거로부터 전해내려온 전설적인 이야기
+지금까지는 원형 타입과 그와 관련된 래퍼 클래스만 알다가 이더리움과 비트코인 지갑 관련 작업들을 하면서 처음 만나게 된 두 녀석이 바로 저것들이다.
 
-솔루션을 가장한 SI회사에서 처음 신입시절 비전공개발자였던 나에게 가끔 '이거 왜 이렇게 써야 하나요?'라는 질문에 선배들은 대부분 이렇게 말을 전하였다.
+~~겁나게 큰 정수와 겁나게 큰 정수를 바탕으로 소수점까지 정확하게 처리하는 겁나게 큰 Decimal~~
 
-"과거로부터 저명한 개발자가 이렇게 하라고 하니 의문을 갖지 말고 그냥 써!"
+지금 하고자 하는 내용은 몇가지 포괄적인 내용을 함께 담아내고 있다.
 
-그렇다. 과거로부터 내려온 전설적인 코드는 그렇게 의문 없이 사용하게 되었다카더라는 전설이.....
+[이펙티브 자바]에서도 이와 관련 내용들을 확인할 수 있는데 이것을 요약해서 전달할 만큼의 능력이 안된다.
 
-# equals() 그리고 hashCode() 이건 먹는건가요?
+따라서 개인적으로 이와 관련된 챕터 정보를 아래에 적어 놓는다.
 
-java입문서나 관련 서적을 보면 equals와 hashcode에 대한 중요하게 생각하며 장황한 설명을 보게 된다.        
+*** 5장 제너릭의 전반적인 내용들 ***
 
-하지만 대부분 이부분은 희안하게 가볍게 건너띄는 경우가 많다. 이론적으로 '아 그렇구나'하고 그냥 넘어가는 경우도 많다.       
+***아이템 14. Comparable을 구현할지 고려하라***
 
-또는 간과하기 쉽다. 위에서처럼 우리는 아무 의심없이 전설적으로 내려오는 그 코드를 삽입하고 사용하기 때문이다.      
+***아이템 17. 변경 가능성을 최소화하라***
 
-그리고 관습적으로 객체를 비교할 때는 '=='로 그리고 String 변수를 비교할 때는 'a.equals("어떤 값")'처럼 사용하는 것으로 그친다.
+***아이템 18. 상속보다는 컴포지션을 사용하라***
 
-사실 나의 경우에도 마찬가지였다.
+***아이템 19. 상속을 고려해 설계하고 문서화하라. 그러지 않았다면 상속을 금지하라***
 
-조슈아 블로크의 [이펙티브 자바]의 경우에도 한 챕터를 할애할 정도로 많은 이야기를 하지만 마지막 핵심정리는 다음처럼 귀결시킨다.
+그 중에 이런 내용이 있다.
 
 ```
-꼭 필요한 경우가 아니면 equals를 재정의하지 말자. 많은 경우에 Object의 equals가 여러분이 원하는 비교를 정확히 수행해준다. 
-재정의해야 할 때는 그 클래스의 핵심 필드 모두를 빠짐없이, 다섯 가지 규약을 확실히 지켜가며 비교해야 한다.
+이 책의 2판에서는 compareTo 메서드에서 정수 기본 타입 필드를 비교할 때는 관계 연산자인 <와 >를, 
+실수 기본 타입 필드를 비교할 때는 정적 메서드인 Double.compare와 Float.compare를 사용하라고 권했다. 
+그런데 자바 7부터는 상황이 변했다. 
+박싱된 기본 타입 클래스들에 새로 추가된 정적 메서드인 compare를 이용하면 되는 것이다. 
+compareTo 메서드에서 관계 연산자 <와 >를 사용하는 이전 방식은 거추장스럽고 오류를 유발하니, 이제는 추천하지 않는다.
 ```
 
-추가적으로 구글의 autoValue를 홍보한다! 롬복이랑 비슷하면서도 뭔가 다른 그 어떤 라이브러리.
+사실 이대로 사용하고 있긴한가 하고 스스로 자문해 보지만...
 
-한번도 써 본적이 없어서 한번 설정해서 실제로 생성된 코드를 살펴보면 롬복과 크게 차이가 나지 않는다.
-
-아마도 두개의 라이브러리는 정확하고 안정적인 규약을 통해서 생성하는 모양새다.
-
-생성된 코드는 [이펙티브 자바]의 내용과 동일하게 구현되어 있다.
-
-'꼭 필요한 경우가 아니면 equals를 재정의하지 말자.' 이것을 나는 순진하게 그대로 받아드리고 있던게 아니였을까?
-
-하지만 반대로 얘기하면 그럼 '꼭 필요한 경우는 언제인가?'라는 의문이 든다.
-
-물론 나는 순진한(자라 쓰고 실력없는이라고 읽는) 개발자니깐 조슈아 블로크같은 분이 저렇게 말했으니 이런 생각이 전혀 들지 않았다.
-
-그리고 우리는 선배가 '과거로부터 전해내려온' 그 방식을 아무 의심없이 사용하기 시작한다.
-
-그래서 이건 당하기 전까지는 그 전설에 대해서 의문을 갖지 않는다.
-
-# JPA를 쓰면 재정의할 필요가 있던데?
-
-정말인가? 하지만 영속성 컨텍스트와 관련해서 이것을 재정의하지 않아도 프록시를 통해 엔티티를 반환할때 1차 캐쉬에서 이미 있는지 파악하고 잘 작동한다.
-
-그런데 왜 재정의할 필요가 있다는 말을 할까?
-
-솔직히 스프링의 JPA를 쓰다보면 의도적으로 어떤 엔티티를 detach를 통해 준 영속성 상태를 만드는 경우를 못본 거 같다.
-
-~~이론 설명할때 빼놓곤!~~
-
-물론 엔티티를 가져와 어떤 비지니스 로직에 사용하고 dirty checking같은 것을 방지할려는 목적으로 사용할 수는 있겠다는 생각이 퍼득 든다.
-
-하지만 차라리 dto로 반환해서 사용한다면 이것도 실상 쓸일이 거의 없어 보인다. 당연히 경험이 없으니 아는 만큼만 보이는 걸텐데... 시무륵
-
-물론 OSIV의 설정을 true가 아닌 false로 설정했을 경우 서비스 계층이 아닌 view template이나 컨트롤러 계층에서 비교할일이 발생할지는 모르겠지만 이유야 어찌되었든 진짜 '꼭 필요한 경우가 아니면 equals를 재정의하지 말자.'라는 문구가 그대로 실무에서도 이뤄진다.
-
-하지만 주의할 것은 'JPA를 쓰면 재정의할 필요가 있던데?'이리는 말에서 힌트를 얻을 수 있다.
-
-## JPA에서 연관관계시 List Vs Set??
-
-'JPA를 쓰면 재정의할 필요가 있던데?'라는 질문은 @OneToMany나 또는 @Embeddable을 이용한 불변 객체와 엔티티를 @ElementCollection와 @CollectionTable을 이용해 값 타입 콜렉션으로 쓸 경우를 말하는 경우이다.
-
-예를 들면 컬렉션의 경우 List 또는 중복을 허용하지 않기 위한 Set을 사용하는 경우인데 @ElementCollection와 @CollectionTable의 경우에는 사용하지 않는게 좋다.
-
-얘초에 저건 한번 날려보면 N에 해당하는 테이블의 데이터를 무조건 싹 다 지우고 다시 인서트하는 어마무시한 일을 보게 될것이기 때문이다.
-
-이유는 JPA관련 책이나 블로그를 검색해 보면 알게 된다.
-
-그렇다는 것은 @OneToMany의 경우이다.
-
-하지만 이 때는 equals 와 hashcode를 재정의할 때 주의를 요한다.
-
-다음 엔티티를 간단하게 정의해 보자.
-
+그 중에 Float를 한번 따라가면
 
 ```java
-@Getter
-@Entity
-@Table(name = "member")
-@ToString(exclude = {"favoriteAddresses"})
-@NoArgsConstructor(access = AccessLevel.PROTECTED)
-public class Member {
+public final class Float extends Number implements Comparable<Float> {
+    // 뭔가가 엄청 긴 그 무엇들이   
+}
+```
+위에서 언급했던 원형타입의 박싱된 형식의 래퍼 클래스를 따라가면 약간씩을 다를 수 있어도 공통적으로 compareTo라는 딸랑 하나의 메소드만 선언된 인터페이스인 Comparable을 구현하고 있다.
 
-  @Builder
-  public Member(String id, String name) {
-    this.id = id;
-    this.name = name;
-  }
+그리고 final이 붙어 있는 불변 클래스이다.
 
-  /** 사용자 아이디 */
-  @Id
-  private String id;
+```
+정확한 답이 필요하다면 float와 double은 피하라.
+```
 
-  /** 사용자 이름 */
-  private String name;
+현재 작은 금융권 스타트업도 그렇고 블록체인의 경우 (특히 거래소)에도 사토시, 즉 소수점 8자리까지를 표현하는 방식에서도 이 작은 소수점이 해당 코인의 액수에 따라서 차이가 커진다.
 
-  @OneToMany(fetch = FetchType.LAZY, cascade = CascadeType.ALL, orphanRemoval = true)
-  @JoinColumn(name = "member_id")
-  private Set<FavoriteAddress> favoriteAddresses = new HashSet<>();
+즉 이런 정확한 계산을 위해서는 BigInteger나 BigDecimal을 사용하게 되는데 이 녀석들은 태생이 래퍼 클래스다.
+
+```java
+/**
+ * @author  Josh Bloch
+ * @author  Mike Cowlishaw
+ * @author  Joseph D. Darcy
+ * @author  Sergey V. Kuksenko
+ * @since 1.1
+ */
+public class BigDecimal extends Number implements Comparable<BigDecimal> {
+    // 니가 여기 왜 있니?
+    private final BigInteger intVal;
+}
+```
+BigInteger도 마찬가지인데 @author에 조슈아 브로크 옹님의 이름이 떡하니 보인다.
+
+암튼 BigInteger도 int와 long의 확장판 같은 느낌을 주는 녀석이고 그것을 이용해 또 확장한 것 같은 넘이 BigDecimal이다.
+
+어라 근데 이넘들은 final이 아니네???
+
+위에 언급한 4개의 아이템중 ***아이템 17. 변경 가능성을 최소화하라*** 에서 이 내용을 확인할 수 있다.
+
+다른 것들은 final이 붙었기 때문에 불변클래스를 의미한다.
+
+이 말은 상속이 불가능한데 이 두개는 이유야 어찌되었든 상속이 가능하다는 의미이다.
+
+어째든 여러분들이 이 둘 중 하나를 사용하게 된다면 코딩에 상당한 불편함을 느끼게 된다.
+
+```java
+class BasquiatTest {
+
+    @Test
+    @DisplayName("BigDecimal 비교: BigDecimal 비교를 좀 더 우아하게")
+    void BigDecimal_Compare() {
+        BigDecimal before = BigDecimal.TEN;
+        BigDecimal after = BigDecimal.TEN;
+        System.out.println(before.compareTo(after) == 0); // before와 after가 같니?
+        System.out.println(before.compareTo(after) > 0);  // before가 after보다 크니?
+        System.out.println(before.compareTo(after) >= 0);  // before가 after보다 크거나 같니?
+        System.out.println(before.compareTo(after) < 0);  // before가 after보다 작니?
+        System.out.println(before.compareTo(after) <= 0);  // before가 after보다 작거나 같니?
+    }
+}
+```
+비교가 많았던 당시에는 코드가 길어지는건 그렇다쳐도 저 형태가 눈에 바로 확 들어오지 않는다는 점인데 비교가 0이나 아니냐로 따져야 하다 보니 가독성이 확 떨어진다.
+
+생각해 보면 float과 double같은 실수 자료형도 비슷하리라 생각하지만 이 두넘은 신기하게 기억속에서 많이 사용한 기억이 없다.
+
+그런데 이런 형식도 오래 작업하다 보면 어느정도 익숙해지긴 한다....
+
+그냥 저렇게 써도 이젠 딱히 불편한 걸 못느낄 때쯔음에 근데 이걸 상속할 수 있다는 게 뭔가 매력적이라는 생각을 하게 된다.
+
+조슈아 블로크옹이 ***아이템 17. 변경 가능성을 최소화하라*** 에서 BigInteer와 BigDecimal에서 final을 붙이지 않았던 이유에 대해 설명한 이유가 있지만 호기심으로 만들어 보는 거다.
+
+아마도 나같은 넘들이 상속이 가능하니 막 상속하고 다니다 보니 상속에 대한 오해가 엄청 많아진게 아닐까?
+
+# 래퍼 클래스를 따라해보자.
+레퍼 클래스를 사용하는 이유는 다양한다.
+
+예를 들면 원형 타입의 경우 객체화 시켜서 메소드등을 통해 API를 제공하고 좀 더 유연하고 다양한 방식을 지원하도록 하는게 가능하기 때문이다.
+
+단지 원형 타입의 경우가 아니더라도 이런 방식을 통해서 풍성한 방식을 제공한다는 것이 매력적이기 때문이다.
+
+[이펙티브 자바]에서도 이와 관련 언급하는 내용이 있다.
+
+# 상속을 통한 구현으로
+
+그렇다면 이넘을 어떻게 상속해서 비교하는 메소드를 작성했는지 한번 코드로 바로 확인해 보자.
+
+```java
+/**
+ * BigDecimal or BigInteger Util
+ * created by basquiat
+ */
+@NoArgsConstructor(access = AccessLevel.PRIVATE)
+public class PreciseNumberUtils {
+
+    /**
+     * object로 받고 타입 체크해서 처리하자
+     * 내부적으로 정적 팩토리와 캐싱으로 처리하는 valueOf를 써야 하나
+     * BigInteger나 String으로 들어온 경우에는 고려를 해봐야 한다.
+     * 만일 스트링으로 "99999999999999999900000000"가 들어온다면 long이나 double로 캐스팅순간에 오류가 난다.
+     * @param value
+     * @return BigDecimal
+     */
+    public static BigDecimal toBigDecimal(Object value) {
+        if(value == null) {
+            return BigDecimal.ZERO;
+        }
+        if(value instanceof BigInteger) {
+            return new BigDecimal((BigInteger) value);
+        }
+        if(value instanceof Double) {
+            return BigDecimal.valueOf((Double) value);
+        }
+        if(value instanceof Long) {
+            return BigDecimal.valueOf((Long) value);
+        }
+        if(value instanceof Integer) {
+            return BigDecimal.valueOf(((Integer) value).longValue());
+        }
+        return new BigDecimal(value.toString());
+    }
+
+    /**
+     * object로 받고 타입 체크해서 처리하자
+     * 스트링인 경우에는 BigDecimal처럼 고려해봐야 한다.
+     * @param value
+     * @return BigInteger
+     */
+    public static BigInteger toBigInteger(Object value) {
+        if(value == null) {
+            return BigInteger.ZERO;
+        }
+        if(value instanceof BigDecimal) {
+            return ((BigDecimal) value).toBigInteger();
+        }
+        if(value instanceof Long) {
+            return BigInteger.valueOf((Long) value);
+        }
+        if(value instanceof Integer) {
+            return BigInteger.valueOf(((Integer) value).longValue());
+        }
+        return new BigDecimal(value.toString()).toBigInteger();
+    }
+
+}
+```
+일단 이런 녀석을 하나 만들어 보자.
+
+Object로 받아서 타입을 체크하고 그에 맞춰 형변환을 한 이후에 BigDecimal나 BigInteger로 변환해 주는 단순한 녀석이다.
+
+그리고 우리는 이제 BigDecimal을 금단의 상속을 통해 특정 목적을 달성하기 위한 클래스를 만들어 볼까 한다.
+
+```java
+/**
+ * BigDecimal을 상속한 클래스
+ * created by basquiat
+ */
+public final class BigDecimalCompare extends BigDecimal {
+
+    /** flag constant */
+    private static final int ZERO = 0;
+
+    BigDecimalCompare(String val) {
+        super(val);
+    }
+
+    /**
+     * BigDecimalCompare 로 감싸기 위한 정적 메소드
+     * @param source
+     * @return BigDecimalCompare
+     */
+    public static BigDecimalCompare bd(BigDecimal source) {
+        return new BigDecimalCompare(source.toString());
+    }
+
+    /**
+     * this == value
+     * @param value
+     * @return boolean
+     */
+    public boolean eq(Object value) {
+        return this.compareTo(toBigDecimal(value)) == ZERO;
+    }
+
+    /**
+     * greater than
+     * this > value
+     * @param value
+     * @return boolean
+     */
+    public boolean gt(Object value) {
+        return this.compareTo(toBigDecimal(value)) > ZERO;
+    }
+
+    /**
+     * greater than or equal
+     * this >= value
+     * @param value
+     * @return boolean
+     */
+    public boolean gte(Object value) {
+        return this.compareTo(toBigDecimal(value)) >= ZERO;
+    }
+
+    /**
+     * less than
+     * this < value
+     * @param value
+     * @return boolean
+     */
+    public boolean lt(Object value) {
+        return this.compareTo(toBigDecimal(value)) < ZERO;
+    }
+
+    /**
+     * less than or equal
+     * this <= value
+     * @param value
+     * @return boolean
+     */
+    public boolean lte(Object value) {
+        return this.compareTo(toBigDecimal(value)) <= ZERO;
+    }
+
+}
+```
+너무 간단하다.
+
+사실 myBatis가 xml을 사용하다보니 '<'나 '>'가 파싱할때 문제를 일으켜 gte, lte같이 쓸수 있게 제공하는데 그 영향을 받은 메소드 명이다.
+
+queryDSL에서는 goe, loe로 많이 사용한다.
+
+gte, lte도 상관없잖아? 상황에 맞춰서 goe, loe로 바꿔 사용해도 의미만 전달된다면야 넌 is 뭔들?
+
+Greater Than or Equals나 Greater Or Equals나 의미 전달에 충분하다고 본다.
+
+그럼 이걸 이제 한번 사용해 보자.
+
+```java
+class BasquiatTest {
+
+    @Test
+    @DisplayName("BigDecimal 비교: 태초에는 BigDecimal을 상속받아서 사용했다.")
+    void BigDecimal_Compare() {
+        BigDecimal before = BigDecimal.TEN;
+        BigDecimal after = BigDecimal.TEN;
+
+        System.out.println("======= 기존 방식 ========");
+        System.out.println(before.compareTo(after) == 0); // before와 after가 같니?
+        System.out.println(before.compareTo(after) > 0);  // before가 after보다 크니?
+        System.out.println(before.compareTo(after) >= 0);  // before가 after보다 크거나 같니?
+        System.out.println(before.compareTo(after) < 0);  // before가 after보다 작니?
+        System.out.println(before.compareTo(after) <= 0);  // before가 after보다 작거나 같니?
+
+        System.out.println("========= 새로운 방식 ============");
+        System.out.println(bd(before).eq(after));
+        System.out.println(bd(before).gt(after));
+        System.out.println(bd(before).gte(after));
+        System.out.println(bd(before).lt(after));
+        System.out.println(bd(before).lte(after));
+
+    }
+
+}
+```
+뭔가 그럴싸 해보인다.
+
+차라리 저런 걸 API로 제공해주는게 차라리 낫지 않나????? 아무리 생각해도 이게 맞는거 같은데?
+
+아...아닌가?
+
+아무튼 [이펙티브 자바]에서는 이와 관련해 정말 장황한 설명을 한다.
+
+```
+상속은 반드시 하위 클래스가 상위 클래스의 ‘진짜’ 하위 타입인 상황에서만 쓰여야 한다. 
+다르게 말하면, 클래스 B가 클래스 A와 is-a 관계일 때만 클래스 A를 상속해야 한다. 
+클래스 A를 상속하는 클래스 B를 작성하려 한다면 “B가 정말 A인가?”라고 자문해보자. 
+“그렇다”고 확신할 수 없다면 B는 A를 상속해서는 안 된다. 
+대답이 “아니다”라면 A를 private 인스턴스로 두고, A와는 다른 API를 제공해야 하는 상황이 대다수다. 
+즉, A는 B의 필수 구성요소가 아니라 구현하는 방법 중 하나일 뿐이다.
+```
+
+지금 작업을 한 목적을 생각해보면 어떤 생각이 드는가?
+
+지금 우리는 원래 의도는 단순하게 compare하는 부분이 가독성이 떨어져 만들게 된 케이스인데 다음부분을 다시 살펴보면
+
+```
+대답이 “아니다”라면 A를 private 인스턴스로 두고, A와는 다른 API를 제공해야 하는 상황이 대다수다. 
+즉, A는 B의 필수 구성요소가 아니라 구현하는 방법 중 하나일 뿐이다.
+```
+
+결국 지금 만든 클래스의 진짜 의도는 저 위에 조슈아 블로크 옹이 첫 번쨰 라인에 말씀하시는 의도와 일맥상통해 보이지 않나?
+
+사실 이 클래스는 위에서 언급했든 부모 클래스의 메소드를 재정의해서 구현하지 않았기 때문에 책에서 장황하게 설명한 상황과는 벗어나 있다.
+
+하지만 누군가가 이 래퍼 클래스에서 그 누군가의 판단으로 특정 메소드를 재정의해야 할것 같다고 해서 재정의를 했다고 생각해보자.
+
+해당 내용은 ***아이템 18. 상속보다는 컴포지션을 사용하라*** 에서 잘 설명되어 있다.
+
+결국 이 클래스를 사용하는 다른 개발자는 원래 목적과는 다른 방향으로 사용할 요소가 너무나 다분하다.
+
+~~그런데 그 일이 실제로 일어났습니다.~~
+
+이렇게 만들어 논 이 클래스 중 BigIntegerWrapper의 경우에는 이더리움의 wei와 gwei를 계산하기 위한 온갖 메소드들이 난무하게 된다.
+
+상위 클래스의 add와 substract같은 녀석들을 재정의하고 사용하기 시작했다.
+
+원래 의도했던 비교에 대한 것만 담당하길 바랬던 나와 선배의 바램과는 달라졌다.
+
+그저 단순한 비교를 쉽게 처리하기 위한 클래스인데 여기서 뜬금없이 이더리움의 수수료와 dApp의 가스비등등을 계산하고 처리하는 로직을 만들어 사용한다고????
+
+그럴거면 차라리 utilClass로 만드는게 더 나을 거 같은데???
+
+그럼에도 난 이 방식이 맘에 들었다. 문제 될건 없다고 생각하기 때문이다.
+
+# 그렇다면 그 이후에 어떻게 했니?
+
+이미 그 회사에서는 리팩토링하기전에 나왔을 뿐더러 손을 대기에는 여기저기 퍼져있어서 결국 놔두게 된 슬픈 이야기가 전해진다.
+
+사요나라~
+
+# 현 회사에서 이와 관련 주니어 개발자분들과 하나씩 작성해 나갔다.
+
+리팩토링도중 이런 코드가 너무 많아서
+
+'만들어 논게 있어! 이걸 사용하라고!'
+
+하고 찾아봤더니 어랏? 없네????
+
+알고 봤더니 내가 만든 어플리케이션에서 나만 줄기차게 사용하고 있었다....
+
+***아이템 18. 상속보다는 컴포지션을 사용하라***
+
+책에서는 컴포지션과 재사용 가능한 전달 클래스를 통한 예제가 있지만 예전에는 나의 생각이 거기까지 미치진 못했다.
+
+내가 생각한 방법은 그냥 컴포지션을 활용해서 상속을 없애고 해당 기능에만 집중하게 만든 케이스이다.
+
+다만 주니어 개발자분들과 커뮤니케이션을 하면서 자바 지식도 체크해 볼겸 상속을 버리고 이 방법으로 함께 진행하는 과정을 가졌다.
+
+그렇다면 기존의 상속했던 것들을 없애고 내부적으로 해당 인스턴스를 선언하면 끝난다.
+
+```java
+/**
+ * 컴포지션으로 처리한 래퍼 클래스
+ * created by basquiat
+ */
+@RequiredArgsConstructor(access = AccessLevel.PRIVATE)
+public final class BigDecimalCompare {
+
+    /** flag constant */
+    private static final int ZERO = 0;
+
+    private final BigDecimal bigDecimal;
+
+    /**
+     * BigDecimalCompare객체를 제공하기 위한 정적 메소드
+     * @param source
+     * @return BigDecimalCompare
+     */
+    public static BigDecimalCompare bd(BigDecimal source) {
+        return new BigDecimalCompare(source);
+    }
+
+    /**
+     * this == value
+     * @param value
+     * @return boolean
+     */
+    public boolean eq(Object value) {
+        return bigDecimal.compareTo(toBigDecimal(value)) == ZERO;
+    }
+
+    /**
+     * Greater Than
+     * this > value
+     * @param value
+     * @return boolean
+     */
+    public boolean gt(Object value) {
+        return bigDecimal.compareTo(toBigDecimal(value)) > ZERO;
+    }
+
+    /**
+     * Greater Than or Equal
+     * this >= value
+     * @param value
+     * @return boolean
+     */
+    public boolean gte(Object value) {
+        return bigDecimal.compareTo(toBigDecimal(value)) >= ZERO;
+    }
+
+    /**
+     * Less Than
+     * this < value
+     * @param value
+     * @return boolean
+     */
+    public boolean lt(Object value) {
+        return bigDecimal.compareTo(toBigDecimal(value)) < ZERO;
+    }
+
+    /**
+     * Less Than or Equal
+     * this <= value
+     * @param value
+     * @return boolean
+     */
+    public boolean lte(Object value) {
+        return bigDecimal.compareTo(toBigDecimal(value)) <= ZERO;
+    }
+
+}
+```
+@RequiredArgsConstructor(access = AccessLevel.PRIVATE)를 통해서 무분별한 객체 생성을 방지한다.
+
+그리고 bd 또는 bi처럼 정적 메소드를 통해서 접근하도록한다.
+
+그 이유는 현재 사용되는 래퍼가 BigDecimal인지 BigInteger인지 뭔가 어색해보이지만 심플한 메소드명으로 파악이 가능하기 때문이다.
+
+기존의 경우에는 BigDecimal과 BigInteger를 상속했기 때문에 '내 자신'으로 비교할 수 있었다면 이제는 내부에 선언한 인스턴스를 비교하게만 하면 기존에 잘 돌아가는 방식에 손을 댈 필요없이 원하는 동작을 수행한다.
+
+어째든 딱 우리가 원하는 기능에 충실한 클래스를 만들었다.
+
+# Generic으로 어떻게 안될까요 ????
+
+```
+선배님 반복되는 코드가 두 객체에 들어가는게 좀 그래요.... 차라리 유틸 클래스로 제네릭하게 사용할 수 없을까요?      
+지금 보니까 공통적으로 Number를 상속하고 Comparable을 구현하고 있는데 이걸 사용할 수 없는건가요?
+```
+
+라고 의견을 제시했다.
+
+원형 타입의 래퍼 클래스중 Number를 상속하고 Comparable를 구현한
+
+- Long
+- Integer
+- Short
+- Byte
+- Double
+- Float
+- BigInteger
+- BigDecimal
+
+의 compareTo 구현체를 보면 공통점이 있는데 그것은 0을 기준으로 같으면 0, left > right면 1, left < right는 -1를 반환한다.
+
+생각해 보니 그럴 수 있겠다 싶어서 다음과 같이
+
+```java
+/**
+ * BigDecimal or BigInteger Util
+ * created by basquiat
+ */
+@NoArgsConstructor(access = AccessLevel.PRIVATE)
+public class PreciseNumberUtils {
+
+    /** flag constant */
+    private static final int ZERO = 0;
+
+    // 이렇게도 가능하다.
+    public static <T extends Number & Comparable<T>> boolean eq(Comparable<T> source, T target) {
+        return source.compareTo(target) == ZERO;
+    }
+
+    public static <T extends Number & Comparable<T>> boolean gt(Comparable<T> source, T target) {
+        return source.compareTo(target) > ZERO;
+    }
+
+    public static <T extends Number & Comparable<T>> boolean gte(Comparable<T> source, T target) {
+        return source.compareTo(target) >= ZERO;
+    }
+
+    public static <T extends Number & Comparable<T>> boolean lt(Comparable<T> source, T target) {
+        return source.compareTo(target) < ZERO;
+    }
+
+    public static <T extends Number & Comparable<T>> boolean lte(Comparable<T> source, T target) {
+        return source.compareTo(target) <= ZERO;
+    }
+
+    // other method
 
 }
 
-@Getter
-@Entity
-@EqualsAndHashCode
-@Table(name = "favorite_address")
-@NoArgsConstructor(access = AccessLevel.PROTECTED)
-public class FavoriteAddress {
+```
 
-  @Id
-  @GeneratedValue(strategy = GenerationType.IDENTITY)
-  private Long id;
+'<T extends Number & Comparable<T>>' 이렇게 함으로서 Integer, Long, Float, Double, SHort, Byte, BigInter, BigDecimal에 대한 커버가 가능해진다.
 
-  @Builder
-  public FavoriteAddress(String city, String street, String zipcode) {
-    this.city = city;
-    this.street = street;
-    this.zipcode = zipcode;
-  }
+또한 저렇게 한정함으로써 위에 언급한 녀석들 외에 Comparable를 구현한 녀석들이 있더라도 저 타입외에는 허용하지 않는다.
 
-  /** 시 */
-  @Column(name = "member_city")
-  private String city;
-
-  /** 동 */
-  @Column(name = "member_street")
-  private String street;
-
-  /** 우편 번호 */
-  @Column(name = "member_zipcode")
-  private String zipcode;
-
-  /** 전체 주소 가져오 */
-  public String totalAddress() {
-    return city + " " + street + ", " + zipcode;
-  }
-
-}
+차라리 이게 나을수도 있겠다고 생각한 순간?
 
 ```
-Set으로 중복을 방지한다 해도 equals와 hashcode를 재정의하지 않으면 의미가 없다.
+그래도 queryDSL처럼 표현하는 방식이 눈에 더 잘 들어와요.      
+그걸 좀 더 다르게 작업할 수 없을까요? 반복되는 코드도 없앨 수 있을거 같은데 다른 방법이 있을까요?
+```
 
-게다가 지금같은 경우에는 설령 FavoriteAddress에 그냥 단순하게 롬복을 통해 equals와 hashcode를 재정의해도 중복으로 데이터가 들어간다.
+'뭔 요구가 이리 많아!!!!!! 음 근데 가능한가? 한번도 생각해 본 적이 없는데?'
 
-왜냐하면 지금의 엔티티 구조로 볼때 favorite_address테이블의 primary key에 해당하는 id는 변경되기 때문이다.
-
-그래서 아이디를 제외한 다른 항목들이 설령 전부 같다 해도 Set 입장에서는 다른 객체로 본다.
-
-그래서 롬복을 이용해서 재정의하거나 코드로 직접 재정의할 경우에는 id를 제외해야 한다.       
+결국 이넘들은 같은 방식으로 처리된다는 것을 확인했으니 GenericNumberCompare로 공통으로 쓸 수 있을까라는 생각에 닿기 시작한다.
 
 ```java
-@EqualsAndHashCode(exclude = {"id"})
+/**
+ * 제너릭하게 처리한 클래스
+ * created by basquiat
+ */
+@RequiredArgsConstructor(access = AccessLevel.PRIVATE)
+public final class GenericNumberCompare<T extends Number & Comparable<T>> {
+
+    /** flag constant */
+    private static final int ZERO = 0;
+
+    private final T source;
+
+    /**
+     * GenericNumberCompare 로 감싸기 위한 정적 메소드
+     * @param source
+     * @return GenericNumberCompare<T>
+     */
+    @SuppressWarnings("unchecked")
+    public static <T extends Number & Comparable<T>> GenericNumberCompare<T> is(T source) {
+        return new GenericNumberCompare(source);
+    }
+
+    /**
+     * this == value
+     * @param value
+     * @return boolean
+     */
+    public boolean eq(T value) {
+        return source.compareTo(value) == ZERO;
+    }
+
+    /**
+     * Greater Than
+     * this > value
+     * @param value
+     * @return boolean
+     */
+    public boolean gt(T value) {
+        return source.compareTo(value) > ZERO;
+    }
+
+    /**
+     * Greater Than or Equal
+     * this >= value
+     * @param value
+     * @return boolean
+     */
+    public boolean gte(T value) {
+        return source.compareTo(value) >= ZERO;
+    }
+
+    /**
+     * Less Than
+     * this < value
+     * @param value
+     * @return boolean
+     */
+    public boolean lt(T value) {
+        return source.compareTo(value) < ZERO;
+    }
+
+    /**
+     * Less Than or Equal
+     * this <= value
+     * @param value
+     * @return boolean
+     */
+    public boolean lte(T value) {
+        return source.compareTo(value) <= ZERO;
+    }
+
+}
+```
+오호라 이렇게 했더니 잘 돌아간다! 만들어 놓고 다들 놀램!
+
+```
+오!!!!! 잘 되요!!!
 ```
 
-초창기에 이걸로 고생한거 생각하면 눙물이 앞을 가린다.             
+이 클래스 하나로 전부 커버할 수 있겠구나라는 생각이 들었다.
 
-~~아니 중복 방지를 한다며????? 근데 왜 중복 데이터가 생기지????????~~
+하지만 이건 좀 위험하다는 생각이 들었다.
 
-하지만 favorite_address에 만일 배송지에 대한 이름을 정의할 수 있게 된다면 이때는 이것을 다시 고려해 봐야 한다.               
+물론 테스트 결과 충분히 사용할 만한 가치가 있다고 생각이 들지만 오히려 타입에 대해서 확실하게 가져가는게 좋다는 생각이 들었다.
 
-이름까지 제외해서 중복 처리를 할 것이냐 아니면 나머지는 같고 이름이 다르다고 할때 이것을 고객의 의도인지 아닌지 알 방법이 없다.        
-
-그렇다고 중복으로 처리하게 되면 이로 인한 고객의 컴플레인 - 분명 작성을 했는데 저장이 안되는데요? 몇번을 작성하게 하는 건지 같은??? - 이 접수된다면 어떻게 할 것인가?         
-
-따라서 List로 할 것인지 Set으로 할것인지 그리고 Set으로 할경우 equals와 hashcode를 어떻게 재정의 할것인지 판단해야 한다.      
-
-하지만 지금 언급한 내용은 JPA에만 국한된 내용이 아니다.      
-
-단지 이것은 java의 전반적인 내용이다.       
-
-**JPA와 관련 예제 테스트 코드를 남겨둔다.**
-
-
-# 당해보기 전까지는 모른다~~
-
-오래전 어느 날 동료 한 분이 나에게 도움을 요청했다.       
-
-"이 코드좀 봐줘봐! 귀신을 만난 거 같아! 내 코드에 잘못된 부분이 있는건지."       
-
-여러분들은 Map을 사용할 때 어떤 특정 객체를 키값으로 사용해 본적이 있는지 궁금하다.
-
-에를 들면
+예를 들면 저 코드를 사용하게 되면
 
 ```java
 public class Test {
 
-
-    public Map<Musician, Genre> createMap() {
-        Map<Musician, Genre> result = new HashMap<>();
-        result.put(new Musician("John Coltrane"), new Genre("Jazz"));
-        result.put(new Musician("ESENSE"), new Genre("Hiphop"));
-        // so something
-        return result;
-    }
-
-
-}
-
-```
-처럼 사용해 본 일이 있는가 이다.
-
-물론 자바 콜렉션 프레임워크의 Map인터페이스를 살펴보면 Map<K, V>처럼 제너릭타입을 받는 것을 볼 수 있다.
-
-하지만 나는 그떄 '오잉? 저런 객체를 키값으로 설정할 수 있다고?'라는 생각이 먼저 들었다.     
-
-그리고 '왜??'라는 의문으로 들어간다. 굳이 힘들게 객체를 키로 설정하는 이유가 무엇인지 도통 알수 없었다.             
-
-그냥 스트링이나 primitive type중 넘버계열의 키만 설정해 사용했던 나로써는 나름 신기했던 것이다.        
-
-하긴 뭐든 가능하긴 하다.       
-
-어째든 궁금해서 Map을 따라가다보면 - Set > HashSet을 따라가도 상관없다. -
-
-```java
-public interface Map<K, V> {
-    
-    // do something
-
-    V get(Object key);
-    
-    // do something
-}
-
-```
-
-이것을 구현한 것들 중 가장 많이 사용되는 HashMap을 따라가면
-
-```java
-public class HashMap<K,V> extends AbstractMap<K,V>
-        implements Map<K,V>, Cloneable, Serializable {
-
-    public V get(Object key) {
-        Node<K,V> e;
-        return (e = getNode(hash(key), key)) == null ? null : e.value;
-    }
-
-    final Node<K,V> getNode(int hash, Object key) {
-        Node<K,V>[] tab; Node<K,V> first, e; int n; K k;
-        if ((tab = table) != null && (n = tab.length) > 0 &&
-                (first = tab[(n - 1) & hash]) != null) {
-            if (first.hash == hash && // always check first node
-                    ((k = first.key) == key || (key != null && key.equals(k))))
-                return first;
-            if ((e = first.next) != null) {
-                if (first instanceof TreeNode)
-                    return ((TreeNode<K,V>)first).getTreeNode(hash, key);
-                do {
-                    if (e.hash == hash &&
-                            ((k = e.key) == key || (key != null && key.equals(k))))
-                        return e;
-                } while ((e = e.next) != null);
-            }
+    public vlid doSomething() {
+        //
+        if(is(source).eq(target)) {
+            // do some
         }
-        return null;
+        //
     }
-   
-    static final int hash(Object key) {
-        int h;
-        return (key == null) ? 0 : (h = key.hashCode()) ^ (h >>> 16);
-    }
-
 }
+
 ```
-오호라? 실제 내부를 처음 봤을때는 신기방기했다.
+같은 방식으로 사용할 텐데 당연히 코드를 보면 알게 되겠지만 비교대상의 타입이 뭔지 불분명해진다.
 
-결국 value를 가져오기 위해서 Object key의 equals와 hashCode를 사용하는 것을 발견하게 된다.
+그래서 이름을 주는 것이 중요하다.
 
-어느 책을 봐도 equals를 재정의하면 hashcode도 같이 재정의하라는 이야기를 쌍으로 꼭 보게 되는데 거기에는 이런 이유가 있기 때문이다.
-
-[이펙티브 자바]의 내용중 하나를 발췌해 보면
-
-- equals 비교에 사용되는 정보가 변경되지 않았다면, 애플리케이션이 실행되는 동안 그 객체의 hashCode 메서드는 몇 번을 호출해도 일관되게 항상 같은 값을 반환해야 한다.     
-  단, 애플리케이션을 다시 실행한다면 이 값이 달라져도 상관없다.
-- equals(Object)가 두 객체를 같다고 판단했다면, 두 객체의 hashCode는 똑같은 값을 반환해야 한다.
-- equals(Object)가 두 객체를 다르다고 판단했더라도, 두 객체의 hashCode가 서로 다 른 값을 반환할 필요는 없다.     
-  단, 다른 객체에 대해서는 다른 값을 반환해야 해시테이블 의 성능이 좋아진다.
-
-
-***hashCode 재정의를 잘못했을 때 크게 문제가 되는 조항은 두 번째다. 즉, 논리적으로 같은 객체는 같은 해시코드를 반환해야 한다.***
-
-결국 이 이야기는 JPA에서만 국한되는 이야기가 아니다.      
-
-그 동료분은 다음과 같은 시나리오를 토대로 코드를 작성했다. 최대한 당시의 흐릿하지만 기억력을 쥐어짜서 비슷하게 구성해 봤다.        
-
-'일별 카드별로 결제한 정보를 모은다.'         
-
-당시 일별 카드별로 결제한 정보중 어느 특정 카드로 어떤 특정 상품을 구입한 경우에는 포인트로 페이백을 주는 이벤트가 있었기 때문이다.     
-
-이 당시에는 myBatis였는데 jpa든 myBatis를 사용하든 JdbcTemplate를 사용하든 그 어떤 형식이든 상관없다. 데이터베이스로부터 어떤 정보를 가져왔다고 한다면
+결국은 저 녀석을 [이펙티브 자바]같은 전달 클래스의 형식과 똑같진 않지만 비슷하게 재사용가능한 전달 클래스처럼 만들어서 사용하고자 한다.
 
 ```java
 /**
- * 최대한 간결하게 일별로 상품에 대해 어떤 카드를 썼는지 담는 객체
+ * 제너릭하게 처리한 클래스
+ * created by basquiat
  */
-@Getter
-@NoArgsConstructor(access = AccessLevel.PROTECTED)
-public class StatisticsCardPayment {
+@RequiredArgsConstructor(access = AccessLevel.PROTECTED)
+public class NumberCompare<T extends Number & Comparable<T>> {
 
-    private String card;
+    /** flag constant */
+    private static final int ZERO = 0;
 
-    private String itemCode;
+    private final T source;
 
-    private String itemName;
+    /**
+     * this == value
+     * @param value
+     * @return boolean
+     */
+    public boolean eq(T value) {
+        return source.compareTo(value) == ZERO;
+    }
 
-    private long price;
+    /**
+     * Greater Than
+     * this > value
+     * @param value
+     * @return boolean
+     */
+    public boolean gt(T value) {
+        return source.compareTo(value) > ZERO;
+    }
 
-    private LocalDateTime paymentDate;
+    /**
+     * Greater Than or Equal
+     * this >= value
+     * @param value
+     * @return boolean
+     */
+    public boolean gte(T value) {
+        return source.compareTo(value) >= ZERO;
+    }
 
-    @Builder
-    public StatisticsCardPayment(@NonNull String card, @NonNull String itemCode, @NonNull String itemName, long price, @NonNull LocalDateTime paymentDate) {
-        this.card = card;
-        this.itemCode = itemCode;
-        this.itemName = itemName;
-        this.price = price;
-        this.paymentDate = paymentDate;
+    /**
+     * Less Than
+     * this < value
+     * @param value
+     * @return boolean
+     */
+    public boolean lt(T value) {
+        return source.compareTo(value) < ZERO;
+    }
+
+    /**
+     * Less Than or Equal
+     * this <= value
+     * @param value
+     * @return boolean
+     */
+    public boolean lte(T value) {
+        return source.compareTo(value) <= ZERO;
     }
 
 }
+
 ```
+해당 클래스는 abstract로 클래스를 변경해서 사용해도 가능하다.
 
-귀찮아서 5개만....
+그리고 다음과 같이
 
-```java
-    final String[] cards = {"국민", "신한", "농협"};
-
-    LocalDateTime now = now();
-    
-    List<StatisticsCardPayment> statisticsCardPayments = new ArrayList<>();
-    StatisticsCardPayment statisticsCardPayment1 = StatisticsCardPayment.builder()
-                                                                        .card(cards[0])
-                                                                        .itemCode("ic_0001")
-                                                                        .itemName("상품명[ic_0001]")
-                                                                        .price(100000)
-                                                                        .paymentDate(now.minusDays(1))
-                                                                        .build();
-    statisticsCardPayments.add(statisticsCardPayment1);
-    StatisticsCardPayment statisticsCardPayment2 = StatisticsCardPayment.builder()
-                                                                        .card(cards[1])
-                                                                        .itemCode("ic_0002")
-                                                                        .itemName("상품명[ic_0002]")
-                                                                        .price(120000)
-                                                                        .paymentDate(now.minusDays(1))
-                                                                        .build();
-    statisticsCardPayments.add(statisticsCardPayment2);
-    StatisticsCardPayment statisticsCardPayment3 = StatisticsCardPayment.builder()
-                                                                        .card(cards[0])
-                                                                        .itemCode("ic_0001")
-                                                                        .itemName("특사 상품명[ic_0001]")
-                                                                        .price(80000)
-                                                                        .paymentDate(now.minusDays(3))
-                                                                        .build();
-    statisticsCardPayments.add(statisticsCardPayment3);
-    StatisticsCardPayment statisticsCardPayment4 = StatisticsCardPayment.builder()
-                                                                        .card(cards[2])
-                                                                        .itemCode("ic_0003")
-                                                                        .itemName("상품명[ic_0003]")
-                                                                        .price(120000)
-                                                                        .paymentDate(now.minusDays(4))
-                                                                        .build();
-    statisticsCardPayments.add(statisticsCardPayment4);
-    StatisticsCardPayment statisticsCardPayment5 = StatisticsCardPayment.builder()
-                                                                        .card(cards[2])
-                                                                        .itemCode("ic_0001")
-                                                                        .itemName("상품명[ic_0001]")
-                                                                        .price(100000)
-                                                                        .paymentDate(now.minusDays(4))
-                                                                        .build();
-    statisticsCardPayments.add(statisticsCardPayment5);
-```
-
-그리고 이런 dto하나가 있었다.
-
-작명이 나름 설득력있다. card/item/paymentdate!
 
 ```java
 /**
- * Map의 키값으로 사용하기 위한 dto
+ * Double 타입을 비교하기 위한 클래스
+ * created by basquiat
  */
-@Getter
-@NoArgsConstructor(access = AccessLevel.PROTECTED)
-public class CardItemPaymentDto {
+public final class DoubleCompare extends NumberCompare<Double> {
 
-    private String card;
-
-    private String itemCode;
-
-    private String paymentDate;
-
-    @Builder
-    public CardItemPaymentDto(@NonNull String card, @NonNull String itemCode, @NonNull String paymentDate) {
-        this.card = card;
-        this.itemCode = itemCode;
-        this.paymentDate = paymentDate;
+    /**
+     * constructor
+     * @param source
+     * @return NumberCompare<T>
+     */
+    DoubleCompare(Double source) {
+        super(source);
     }
 
-}
-
-```
-아이템의 이름과 가격은 상황에 따라 다를 수가 있다. 상품 재고 관리를 하는 방식에 따라 같은 아이템이라도 시기에 따라 상품명에 특가라는 단어가 붙기도 하고 그에 따른 가격 책정이 있기 때문에 키 값으로 딱 맞는건 고유한 정보일 것이다.     
-
-그래서 card와 고유한 상품 코드, 그리고 일별 체크를 위한 부분으로 paymentDate를 갖는 키값으로 사용할 객체를 만든다.
-
-여기까지 내가 생각했던 것은 왜 이것을 키값으로 사용하려 했을까였는데 다음 코드를 보기 시작하면서 깨닫게 된다.
-
-
-```java
-final String[] cards = {"국민", "신한", "농협"};
-
-LocalDateTime now = now();
-
-List<StatisticsCardPayment> statisticsCardPayments = new ArrayList<>();
-StatisticsCardPayment statisticsCardPayment1 = StatisticsCardPayment.builder()
-                                                                    .card(cards[0])
-                                                                    .itemCode("ic_0001")
-                                                                    .itemName("상품명[ic_0001]")
-                                                                    .price(100000)
-                                                                    .paymentDate(now)
-                                                                    .build();
-statisticsCardPayments.add(statisticsCardPayment1);
-StatisticsCardPayment statisticsCardPayment2 = StatisticsCardPayment.builder()
-                                                                    .card(cards[1])
-                                                                    .itemCode("ic_0002")
-                                                                    .itemName("상품명[ic_0002]")
-                                                                    .price(120000)
-                                                                    .paymentDate(now.minusDays(1))
-                                                                    .build();
-statisticsCardPayments.add(statisticsCardPayment2);
-StatisticsCardPayment statisticsCardPayment3 = StatisticsCardPayment.builder()
-                                                                    .card(cards[0])
-                                                                    .itemCode("ic_0001")
-                                                                    .itemName("특사 상품명[ic_0001]")
-                                                                    .price(80000)
-                                                                    .paymentDate(now)
-                                                                    .build();
-statisticsCardPayments.add(statisticsCardPayment3);
-StatisticsCardPayment statisticsCardPayment4 = StatisticsCardPayment.builder()
-                                                                    .card(cards[2])
-                                                                    .itemCode("ic_0003")
-                                                                    .itemName("상품명[ic_0003]")
-                                                                    .price(120000)
-                                                                    .paymentDate(now.minusDays(4))
-                                                                    .build();
-statisticsCardPayments.add(statisticsCardPayment4);
-StatisticsCardPayment statisticsCardPayment5 = StatisticsCardPayment.builder()
-                                                                    .card(cards[2])
-                                                                    .itemCode("ic_0001")
-                                                                    .itemName("상품명[ic_0001]")
-                                                                    .price(100000)
-                                                                    .paymentDate(now.minusDays(4))
-                                                                    .build();
-statisticsCardPayments.add(statisticsCardPayment5);
-
-Map<CardItemPaymentDto, List<StatisticsCardPayment>> result = new HashMap<>();
-
-```
-아마도 예상할 수 있지 않을까?
-
-일단 어떤 card/itemCode/paymentDate로부터 정보를 가져와 키로 사용할 CardItemPaymentDto를 생성하고 해당 StatisticsCardPayment를 리스트 형식으로 가져온다.       
-
-그리고 쭉 돌면서 해당 키로 있는지 없는지 확인하고 없으면 put, 있으면 가져와서 해당 리스트에 추가.      
-
-```java
-final String[] cards = {"국민", "신한", "농협"};
-
-LocalDateTime now = now();
-
-List<StatisticsCardPayment> statisticsCardPayments = new ArrayList<>();
-StatisticsCardPayment statisticsCardPayment1 = StatisticsCardPayment.builder()
-                                                                    .card(cards[0])
-                                                                    .itemCode("ic_0001")
-                                                                    .itemName("상품명[ic_0001]")
-                                                                    .price(100000)
-                                                                    .paymentDate(now)
-                                                                    .build();
-statisticsCardPayments.add(statisticsCardPayment1);
-StatisticsCardPayment statisticsCardPayment2 = StatisticsCardPayment.builder()
-                                                                    .card(cards[1])
-                                                                    .itemCode("ic_0002")
-                                                                    .itemName("상품명[ic_0002]")
-                                                                    .price(120000)
-                                                                    .paymentDate(now.minusDays(1))
-                                                                    .build();
-statisticsCardPayments.add(statisticsCardPayment2);
-StatisticsCardPayment statisticsCardPayment3 = StatisticsCardPayment.builder()
-                                                                    .card(cards[0])
-                                                                    .itemCode("ic_0001")
-                                                                    .itemName("특사 상품명[ic_0001]")
-                                                                    .price(80000)
-                                                                    .paymentDate(now)
-                                                                    .build();
-statisticsCardPayments.add(statisticsCardPayment3);
-StatisticsCardPayment statisticsCardPayment4 = StatisticsCardPayment.builder()
-                                                                    .card(cards[2])
-                                                                    .itemCode("ic_0003")
-                                                                    .itemName("상품명[ic_0003]")
-                                                                    .price(120000)
-                                                                    .paymentDate(now.minusDays(4))
-                                                                    .build();
-statisticsCardPayments.add(statisticsCardPayment4);
-StatisticsCardPayment statisticsCardPayment5 = StatisticsCardPayment.builder()
-                                                                    .card(cards[2])
-                                                                    .itemCode("ic_0001")
-                                                                    .itemName("상품명[ic_0001]")
-                                                                    .price(100000)
-                                                                    .paymentDate(now.minusDays(4))
-                                                                    .build();
-statisticsCardPayments.add(statisticsCardPayment5);
-
-final Map<CardItemPaymentDto, List<StatisticsCardPayment>> resultMap = new HashMap<>();
-        
-statisticsCardPayments.stream()
-                      .forEach(entity -> {
-                            CardItemPaymentDto key = CardItemPaymentDto.builder()
-                                                                       .card(entity.getCard())
-                                                                       .itemCode(entity.getItemCode())
-                                                                       .paymentDate(LocalDateTimeForm.SIMPLE_YMD.transform(entity.getPaymentDate()))
-                                                                       .build();
-                            List<StatisticsCardPayment> values = resultMap.get(key);
-                            if(values == null) {
-                                // 없으면 리스트로 넣자.
-                                resultMap.put(key, new ArrayList<>(Collections.singletonList(entity)));
-                            } else {
-                                // 있으면 기존의 리스트에 추가
-                                values.add(entity);
-                            }
-                      });
-
-System.out.print(resultMap.toString());
-
-```
-의도적으로 국민/ic_0001/now가 같은 녀석이 두개가 존재하기 때문에 이 키에 맞춰 2개의 리스트가 생성되야 한다.
-
-하지만 결과는 전혀 다르게 나온다.
-
-```
-real result:
-{
-    CardItemPaymentDto(card=국민, itemCode=ic_0001, paymentDate=2022-07-03)=[StatisticsCardPayment(card=국민, itemCode=ic_0001, itemName=상품명[ic_0001], price=100000, paymentDate=2022-07-03T19:24:51.820872)], 
-    CardItemPaymentDto(card=국민, itemCode=ic_0001, paymentDate=2022-07-03)=[StatisticsCardPayment(card=국민, itemCode=ic_0001, itemName=특사 상품명[ic_0001], price=80000, paymentDate=2022-07-03T19:24:51.820872)], 
-    CardItemPaymentDto(card=농협, itemCode=ic_0003, paymentDate=2022-06-30)=[StatisticsCardPayment(card=농협, itemCode=ic_0003, itemName=상품명[ic_0003], price=120000, paymentDate=2022-06-30T19:24:51.820872)], 
-    CardItemPaymentDto(card=농협, itemCode=ic_0001, paymentDate=2022-06-30)=[StatisticsCardPayment(card=농협, itemCode=ic_0001, itemName=상품명[ic_0001], price=100000, paymentDate=2022-06-30T19:24:51.820872)], 
-    CardItemPaymentDto(card=신한, itemCode=ic_0002, paymentDate=2022-07-03)=[StatisticsCardPayment(card=신한, itemCode=ic_0002, itemName=상품명[ic_0002], price=120000, paymentDate=2022-07-03T19:24:51.820872)]
-}
-```
-아마도 원래 의도했던 결과는 다음과 같을 것이다.
-
-```
-expected result:
-{
-    CardItemPaymentDto(card=국민, itemCode=ic_0001, paymentDate=2022-07-03)=[
-        StatisticsCardPayment(card=국민, itemCode=ic_0001, itemName=상품명[ic_0001], price=100000, paymentDate=2022-07-03T19:24:51.820872), 
-        StatisticsCardPayment(card=국민, itemCode=ic_0001, itemName=특사 상품명[ic_0001], price=80000, paymentDate=2022-07-03T19:24:51.820872)
-    ], 
-    CardItemPaymentDto(card=농협, itemCode=ic_0003, paymentDate=2022-06-30)=[StatisticsCardPayment(card=농협, itemCode=ic_0003, itemName=상품명[ic_0003], price=120000, paymentDate=2022-06-30T19:24:51.820872)], 
-    CardItemPaymentDto(card=농협, itemCode=ic_0001, paymentDate=2022-06-30)=[StatisticsCardPayment(card=농협, itemCode=ic_0001, itemName=상품명[ic_0001], price=100000, paymentDate=2022-06-30T19:24:51.820872)], 
-    CardItemPaymentDto(card=신한, itemCode=ic_0002, paymentDate=2022-07-03)=[StatisticsCardPayment(card=신한, itemCode=ic_0002, itemName=상품명[ic_0002], price=120000, paymentDate=2022-07-03T19:24:51.820872)]
-}
-```
-[이펙티브 자바]에서는 이것을 다음과 같이 설명한다.
-
-```
-PhoneNumber 클래스는 hashCode 를 재정의하지 않았기 때문에 논리적 동치인 두 객체가 서로 다른 해시코드를 반환하여 두 번째 규약을 지키지 못한다.      
-그 결과 get 메서드는 엉뚱한 해시 버킷에 가서 객체를 찾으려 한 것이다. 
-설사 두 인스턴스를 같은 버킷에 담았더라도 get 메서드는 여전히 null을 반환하는데, HashMap은 해시코드가 다른 엔트리끼리는 동치성 비교를 시도조차 하지 않도록 최적화되어 있기 때문이다.
-```
-
-위에서 우리가 Map을 따라가면서 만난
-
-```java
-public class HashMap<K,V> extends AbstractMap<K,V>
-        implements Map<K,V>, Cloneable, Serializable {
-
-    public V get(Object key) {
-        Node<K,V> e;
-        return (e = getNode(hash(key), key)) == null ? null : e.value;
-    }
-
-    final Node<K,V> getNode(int hash, Object key) {
-        Node<K,V>[] tab; Node<K,V> first, e; int n; K k;
-        if ((tab = table) != null && (n = tab.length) > 0 &&
-                (first = tab[(n - 1) & hash]) != null) {
-            if (first.hash == hash && // always check first node
-                    ((k = first.key) == key || (key != null && key.equals(k))))
-                return first;
-            if ((e = first.next) != null) {
-                if (first instanceof TreeNode)
-                    return ((TreeNode<K,V>)first).getTreeNode(hash, key);
-                do {
-                    if (e.hash == hash &&
-                            ((k = e.key) == key || (key != null && key.equals(k))))
-                        return e;
-                } while ((e = e.next) != null);
-            }
-        }
-        return null;
-    }
-   
-    static final int hash(Object key) {
-        int h;
-        return (key == null) ? 0 : (h = key.hashCode()) ^ (h >>> 16);
-    }
-
-}
-```
-이 코드를 보면 getNode를 타기 전에 hashCode를 먼저 비교하는 hash메소드를 호출하는 것을 볼 수 있다.
-
-결국 ***HashMap은 해시코드가 다른 엔트리끼리는 동치성 비교를 시도조차 하지 않도록 최적화되어 있기 때문이다.*** 여기서 힌트를 얻게된다.
-
-이것을 원하는 결과로 얻기 위해서는 조슈아 블로크 옹께서 홍보하는 autoValue를 이용하거나 롬복의 어노테이션을 이용하면 끝난다.
-
-```java
-/**
- * Map의 키값으로 사용하기 위한 dto
- */
-@Getter
-@ToString
-@EqualsAndHashCode
-@NoArgsConstructor(access = AccessLevel.PROTECTED)
-public class CardItemPaymentDto {
-
-    private String card;
-
-    private String itemCode;
-
-    private String paymentDate;
-
-    @Builder
-    public CardItemPaymentDto(@NonNull String card, @NonNull String itemCode, @NonNull String paymentDate) {
-        this.card = card;
-        this.itemCode = itemCode;
-        this.paymentDate = paymentDate;
-    }
-
-}
-
-```
-원하는 결과를 얻었을 것이다.
-
-사실 무언가를 할 때 map 자체를 가지고 비지니스 로직을 처리하는 것이 어려울 때가 있다.
-
-최종적으로는 StatisticsCardPayment에 대한 dto를 만들고 그것을 전체적으로 감싸서 사용할 객체를 만들어 보자.
-
-```java
-/**
- * StatisticsCardPayment > dto
- * 이름이 길어서 줄여버림
- */
-@Getter
-@ToString
-@NoArgsConstructor(access = AccessLevel.PROTECTED)
-public class CardPaymentDto {
-
-    private String card;
-
-    private String itemCode;
-
-    private String itemName;
-
-    private long price;
-
-    private LocalDateTime paymentDate;
-
-    @Builder
-    public CardPaymentDto(@NonNull String card, @NonNull String itemCode, @NonNull String itemName, long price, @NonNull LocalDateTime paymentDate) {
-        this.card = card;
-        this.itemCode = itemCode;
-        this.itemName = itemName;
-        this.price = price;
-        this.paymentDate = paymentDate;
-    }
-
-    public static CardPaymentDto entityToDto(StatisticsCardPayment entity) {
-        return CardPaymentDto.builder()
-                             .card(entity.getCard())
-                             .itemCode(entity.getItemCode())
-                             .itemName(entity.getItemName())
-                             .paymentDate(entity.getPaymentDate())
-                             .build();
+    /**
+     * DoubleCompare 로 감싸기 위한 정적 메소드
+     * @param source
+     * @return DoubleCompare
+     */
+    public static DoubleCompare db(Double source) {
+        return new DoubleCompare(source);
     }
 
 }
 
 /**
- * 맵의 키와 밸류를 담는 일종의 이름을 막지은 분석 결과 객체 
+ * BigDecimal 타입을 비교하기 위한 클래스
+ * created by basquiat
  */
-@Getter
-@ToString
-@NoArgsConstructor(access = AccessLevel.PROTECTED)
-public class AnalysisResult {
+public final class BigDecimalCompare extends NumberCompare<BigDecimal> {
 
-    private CardItemPaymentDto cardItemPayment;
-
-    private List<CardPaymentDto> cardPayments;
-
-    @Builder
-    public AnalysisResult(@NonNull CardItemPaymentDto cardItemPayment, List<CardPaymentDto> cardPayments) {
-        this.cardItemPayment = cardItemPayment;
-        this.cardPayments = cardPayments;
+    /**
+     * constructor
+     * @param source
+     * @return NumberCompare<T>
+     */
+    BigDecimalCompare(BigDecimal source) {
+        super(source);
     }
 
-    public boolean wantToFind(@NonNull String card, @NonNull String itemCode, @NonNull String paymentDate) {
-        if(card.equals(this.cardItemPayment.getCard()) && itemCode.equals(this.cardItemPayment.getItemCode()) && paymentDate.equals(this.cardItemPayment.getPaymentDate())) {
-            return true;
-        }
-        return false;
+    /**
+     * BigDecimalCompare 로 감싸기 위한 정적 메소드
+     * @param source
+     * @return BigDecimalCompare
+     */
+    public static BigDecimalCompare bd(BigDecimal source) {
+        return new BigDecimalCompare(source);
     }
 
 }
 
 ```
+처럼 필요한 경우에 작성해 놓은 전달 클래스를 상속해서 구현하면 된다.
 
-뭔가 좀 오버 페이스 하는거 같아 보이긴 하지만 이렇게도 할 수 있다는 것을 한번 보여주고 싶었다.
+last 패키지에 몇가지 Compare 객체를 만들어 놨다.
 
+이로써 반복되는 코드는 뒤로 싹 다 숨겨버리고 간략하게 확장해서 사용이 가능하게 만들었다.
+
+이는 auto-boxing/auto-unboxing이 가능하다.
+
+또한 실수로
 
 ```java
-class SimpleTest {
+Long source = 1000L;
+Long target = 1000L;
 
-  @Test
-  @DisplayName("JUST_DO_CODING: 데이터 생성하고 테스트 해보기")
-  void JUST_DO_CODING() {
-
-    final String[] cards = {"국민", "신한", "농협"};
-
-    LocalDateTime now = now();
-
-    List<StatisticsCardPayment> statisticsCardPayments = new ArrayList<>();
-    StatisticsCardPayment statisticsCardPayment1 = StatisticsCardPayment.builder()
-                                                                        .card(cards[0])
-                                                                        .itemCode("ic_0001")
-                                                                        .itemName("상품명[ic_0001]")
-                                                                        .price(100000)
-                                                                        .paymentDate(now)
-                                                                        .build();
-    statisticsCardPayments.add(statisticsCardPayment1);
-    
-    StatisticsCardPayment statisticsCardPayment2 = StatisticsCardPayment.builder()
-                                                                        .card(cards[1])
-                                                                        .itemCode("ic_0002")
-                                                                        .itemName("상품명[ic_0002]")
-                                                                        .price(120000)
-                                                                        .paymentDate(now.minusDays(1))
-                                                                        .build();
-    statisticsCardPayments.add(statisticsCardPayment2);
-    
-    StatisticsCardPayment statisticsCardPayment3 = StatisticsCardPayment.builder()
-                                                                        .card(cards[0])
-                                                                        .itemCode("ic_0001")
-                                                                        .itemName("특사 상품명[ic_0001]")
-                                                                        .price(80000)
-                                                                        .paymentDate(now)
-                                                                        .build();
-    statisticsCardPayments.add(statisticsCardPayment3);
-    
-    StatisticsCardPayment statisticsCardPayment4 = StatisticsCardPayment.builder()
-                                                                        .card(cards[2])
-                                                                        .itemCode("ic_0003")
-                                                                        .itemName("상품명[ic_0003]")
-                                                                        .price(120000)
-                                                                        .paymentDate(now.minusDays(4))
-                                                                        .build();
-    statisticsCardPayments.add(statisticsCardPayment4);
-    
-    StatisticsCardPayment statisticsCardPayment5 = StatisticsCardPayment.builder()
-                                                                        .card(cards[2])
-                                                                        .itemCode("ic_0001")
-                                                                        .itemName("상품명[ic_0001]")
-                                                                        .price(100000)
-                                                                        .paymentDate(now.minusDays(4))
-                                                                        .build();
-    statisticsCardPayments.add(statisticsCardPayment5);
-
-    final Map<CardItemPaymentDto, List<StatisticsCardPayment>> resultMap = new HashMap<>();
-
-    statisticsCardPayments.stream()
-                          .forEach(entity -> {
-                              CardItemPaymentDto key = CardItemPaymentDto.builder()
-                                                                         .card(entity.getCard())
-                                                                         .itemCode(entity.getItemCode())
-                                                                         .paymentDate(LocalDateTimeForm.SIMPLE_YMD.transform(entity.getPaymentDate()))
-                                                                         .build();
-                              List<StatisticsCardPayment> values = resultMap.get(key);
-                              if(values == null) {
-                                // 없으면 리스트로 넣자.
-                                resultMap.put(key, new ArrayList<>(Collections.singletonList(entity)));
-                              } else {
-                                // 있으면 기존의 리스트에 추가
-                                values.add(entity);
-                              }
-                          });
-
-    System.out.print(resultMap.toString());
-
-    List<AnalysisResult> results = resultMap.entrySet()
-                                            .stream()
-                                            .map(entry -> AnalysisResult.builder()
-                                                                        .cardItemPayment(entry.getKey())
-                                                                        .cardPayments(entry.getValue()
-                                                                                           .stream()
-                                                                                           .map(CardPaymentDto::entityToDto)
-                                                                                           .collect(toList()))
-                                                                        .build())
-                                            .collect(toList());
-    System.out.println(results.toString());
-
-    // 특정 조건으로 조회하기
-    String targetCard = cards[0];
-    String targetItemCode = "ic_0001";
-    Predicate<AnalysisResult> wantToFind = analysisResult -> analysisResult.wantToFind(targetCard, targetItemCode, LocalDateTimeForm.SIMPLE_YMD.transform(now));
-
-    AnalysisResult analysisResult = results.stream()
-                                           .filter(wantToFind::test)
-                                           .findFirst()
-                                           .orElseGet(null); // 없으면 null 반환
-
-    System.out.println(analysisResult.toString());
-    System.out.println(analysisResult.getCardPayments().toString());
-
-    // 스트림에서 바로 원하는 조건의 cardPayments list를 가져오자.
-    List<CardPaymentDto> cardPayments = results.stream()
-                                               .filter(wantToFind::test)
-                                               // 그냥 한줄로 처리
-                                               //.map(AnalysisResult::getCardPayments)
-                                               //.flatMap(cardPaymentDtos -> cardPaymentDtos.stream())
-                                               .flatMap(dto -> dto.getCardPayments().stream())
-                                               .collect(toList());
-
-    System.out.println(cardPayments.toString());
-  }
-
+if(source == target) {
+    // 아니 왜 false가???
 }
+
 ```
-솔직히 이 때 나도 귀신을 만난 것 같은 버그때문에 그 동료분과 진짜 오랫동안 디버깅을 하며 찾아봤다.       
+같은 실수를 방지할 수 있다.
 
-하지만 그 날 결국 왜 이런 현상이 발생하는지에 대해서 전혀 감을 잡지 못했다가 몇일 지나서야 다른 분의 도움으로 알게 된 케이스이다.             
+```java
+Long source = 1000L;
+Long target = 1000L;
 
-그 몇일 동안 이 생각때문에 머리가 얼마나 복잡했는지 모른다. 당연히 되야 한다고 생각했던게 안되니깐 답답함이 장난아니였다.            
+if(ll(source).eq(target)) {
+    // true
+}
 
-이런 걸 당해 본 적이 있었어야지.....
+```
 
-이 때까지 전설로만 내려오던 또는 통념적으로만 의례 '그렇구나'라고 짚고 넘어갔던 이 equals와 hashcode에 대해서 다시 한번 생각해 본 경우다.                
+# At a Glance도
 
+아마도 주니어 개발자분들과 이 시간을 갖지 않았다면 나 조차 패키지상으로 start패키지에 있는 내용에서만 그쳤을 것이다.
 
-# At a Glance
+오히려 게으르고 싶은 주니어 개발자분들의 생각과 그것을 확장해 나가고 싶은 욕망이 좀 더 좋은 코드를 생산해 낸다는 것을 배운 시간이다.
 
-사실 지금 생각해보면 저 코드는 참 어의가 없는 코드다.     
+'아니 이런 생각을 해? 이게 될까??????'
 
-그냥 애초에 원하는 정보의 쿼리를 날리면 끝나는 건데?       
+게다가 [이펙티브 자바]는 다들 가지고 있는 책인데 아마 비슷한 생각을 했던거 같다.
 
-다만 처음 만난 케이스라 아마도 어떻게든 해결해 보겠다는 몸부림이었을 것이다.
+'빌드 패턴이나 try-with-resource같은 몇개 아이템들 빼곤 와닿지 않고 실무에 어떻게 적용할까?'
 
+라는 의구심을 가지고 있었던 듯 싶다. 실제로 이 내용을 중심으로 이렇게 리팩토링 하는걸 보고 다들 신기해 한듯.
+
+사실 지금 이 내용이 그렇게 대단한 내용이 아니지만 그보다는 생각을 어디까지 확장하고 코드를 리팩토링 하는지에 대한 방식이 더 귀한 시간이었으리라.
